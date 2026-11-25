@@ -180,7 +180,12 @@
     ]);
     const dev = (list) => [['', 'System default'], ...list.map((d) => [d.id, d.name])];
     const mcp = JSON.stringify({ mcpServers: { lumos: { command: 'lumos', args: ['mcp'] } } }, null, 2);
-    const perms = Object.entries(health.permissions || {}).map(([k, v]) => `<li>${esc(k)}: <b>${esc(v)}</b></li>`).join('');
+    const perms = Object.entries(health.permissions || {}).map(([k, v]) => {
+      const fix = v === 'granted' || k === 'accessibility' ? '' : ` <button class="btn small" data-act="open-pane" data-kind="${esc(k)}">Open settings</button>`;
+      return `<li>${esc(k)}: <b>${esc(v)}</b>${fix}</li>`;
+    }).join('');
+    const paneHint = Object.values(health.permissions || {}).some((v) => v !== 'granted')
+      ? '<div class="hint">Open settings shows Lumos in Finder. Drag it into the list, or press +, and it turns on. Then restart Lumos.</div>' : '';
     const problems = health.problems.length
       ? health.problems.map((p) => `<li><b>${esc(p.code)}</b>: ${esc(p.message)}<div class="hint">Fix: ${esc(p.fix)}</div></li>`).join('')
       : '<li>No problems found.</li>';
@@ -210,6 +215,10 @@
         ${check('audio.systemAudio', 'Record system audio', s.audio.systemAudio, 'Needs macOS 13 or later.')}
         ${num('audio.micGainDb', 'Microphone gain (dB)', s.audio.micGainDb, -20, 20, 0.5)}
       </fieldset>
+      <fieldset><legend>Transcripts</legend>
+        <label class="f"><span>Whisper model file</span><input type="text" data-path="advanced.whisperModelPath" data-type="nullable" placeholder="/path/to/ggml-medium.bin" value="${esc(s.advanced.whisperModelPath ?? '')}">
+          <span class="hint">A whisper.cpp <code>ggml-*.bin</code> model. Needed for the Transcribe button. Transcription runs on this Mac.</span></label>
+      </fieldset>
       <fieldset><legend>AI agents and automation</legend>
         ${check('automation.agentMayStartRecording', 'Let AI agents start recordings', s.automation.agentMayStartRecording, 'A visible indicator always shows while recording, and agents get a countdown of at least 3 seconds.')}
         ${check('automation.agentMayDelete', 'Let AI agents delete recordings', s.automation.agentMayDelete, 'Deleted recordings go to the Trash.')}
@@ -219,7 +228,7 @@
       </fieldset>
       <fieldset><legend>Status</legend>
         <div class="hint">Capture engine: ${esc(health.backend)} · ${esc(health.ffmpeg || 'ffmpeg not found')}</div>
-        <ul class="health">${perms}</ul>
+        <ul class="health">${perms}</ul>${paneHint}
         <ul class="health">${problems}</ul>
       </fieldset></div>`;
   }
@@ -244,6 +253,8 @@
         if (!dir) return;
         await lumos.call('settings.set', { patch: { 'storage.saveFolder': dir } });
         toast('Saved'); renderSettings();
+      } else if (el.dataset.act === 'open-pane') {
+        await lumos.invoke('open_privacy_pane', { kind: el.dataset.kind });
       } else if (el.dataset.act === 'copy-mcp') {
         await navigator.clipboard.writeText(document.getElementById('mcp').textContent);
         toast('Copied');

@@ -310,10 +310,12 @@ pub struct Advanced {
     pub screen_bitrate_kbps: Option<u32>,
     pub camera_bitrate_kbps: Option<u32>,
     pub log_level: String,
+    /// Path to a whisper.cpp `ggml-*.bin` model, used by transcripts when none is passed.
+    pub whisper_model_path: Option<String>,
 }
 
 impl Default for Advanced {
     fn default() -> Self {
-        Self { encoder: "hardware".into(), screen_bitrate_kbps: None, camera_bitrate_kbps: None, log_level: "info".into() }
+        Self { encoder: "hardware".into(), screen_bitrate_kbps: None, camera_bitrate_kbps: None, log_level: "info".into(), whisper_model_path: None }
     }
 }

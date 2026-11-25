@@ -163,6 +163,7 @@ fn build() -> Vec<ToolDef> {
         // transcripts
         tool!("transcript.create", "Transcribe a recording locally with whisper.cpp (job). `wait` blocks until done.", TranscriptCreateParams => TranscriptCreateResult, Mutating, ALL, None, ["transcript", "create"], long),
         tool!("transcript.get", "Read a recording's transcript as txt, srt or vtt. How an agent reads what was said.", TranscriptGetParams => TranscriptGetResult, ReadOnly, ALL, None, ["transcript", "get"]),
+        tool!("chapters.suggest", "Suggest chapters from markers and long pauses in the transcript. Summaries are left to the client.", RecordingIdParams => ChaptersResult, ReadOnly, ALL, None, ["chapters"]),
         // jobs
         tool!("jobs.list", "Recent jobs, newest first.", JobListParams => Vec<Job>, ReadOnly, ALL, None, ["jobs", "ls"]),
         tool!("jobs.get", "Status, progress and result of one background job (save, export, import).", JobIdParams => Job, ReadOnly, ALL, None, ["jobs", "show"]),

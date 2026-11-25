@@ -226,6 +226,7 @@ impl Inner {
             "library.delete" => json(self.library_delete(parse(params)?)?),
             "library.reveal" => json(self.library_reveal(parse(params)?)?),
             "transcript.create" => json(self.transcript_create(parse(params)?).await?),
+            "chapters.suggest" => json(self.chapters_suggest(parse(params)?)?),
             "transcript.get" => json(self.transcript_get(parse(params)?)?),
             "library.recover" => json(self.library_recover(parse(params)?).await?),
             "export.presets" => json(self.export_presets()),

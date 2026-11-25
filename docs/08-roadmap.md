@@ -4,7 +4,9 @@ macOS first, engine and CLI first, UI second. Each milestone ends with something
 
 ## M0: Foundations (engine + CLI records a display)
 
-> **Status (2026-11-25): skeleton done, capture spike open.** Built and tested: `lumos-model`, the `lumos-tools` registry (23 tools), `lumos-rpc`, `lumos-core` (recorder state machine, settings, jobs, finalize, agent policy), `lumos-media` (ffmpeg CLI), the fake capture backend, `lumosd`, the `lumos` CLI and `cargo xtask schemas`. The fake backend records, pauses, resumes, stops and saves a real MP4 end to end, in Rust tests and through the CLI. **Not built:** the macOS capture backend (displays and the Screen Recording check are real; recording returns `BACKEND_ERROR`), the Tauri shell, crash recovery. **Exit criteria below are not met:** nothing is QuickTime-verified from a real display, and A/V sync is untested.
+> **Status (2026-11-25): M0 built and verified on macOS 15.** The macOS backend (Swift ScreenCaptureKit helper) records a real display, area and window with mic and system audio, and pause/resume writes segments. Checked: playable MP4s, durations within about 50 ms of wall time, mic samples inside the 33 ms sync target over short runs. **Not verified:** long-recording sync, macOS 13/14, CPU and disk use, crash recovery on a real kill.
+
+> **Overall status:** M0 done on macOS 15. M1: toolbar, bubble window and library/settings UI exist and run; the camera track is untested (needs Screen Recording and Camera for the signed bundle). M2: library, export (with `--range`) and recover built and tested; trim is `export --range`. M3: `lumos mcp` built and smoke-tested. M4: local transcripts (`transcript.*`), transcript search and `chapters.suggest` built; click highlights, camera blur and caption import are not. M5 (Windows, Linux) not started. Distribution needs a Developer ID and notarization.
 
 **Build**
 

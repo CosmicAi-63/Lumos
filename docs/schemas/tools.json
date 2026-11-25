@@ -4151,7 +4151,7 @@
           ]
         },
         "model": {
-          "description": "Path to a whisper.cpp `ggml-*.bin` model. Default: `$LUMOS_WHISPER_MODEL`.",
+          "description": "Path to a whisper.cpp `ggml-*.bin` model. Default: setting `advanced.whisperModelPath`, then `$LUMOS_WHISPER_MODEL`.",
           "type": [
             "string",
             "null"
@@ -4255,6 +4255,79 @@
     },
     "states": null,
     "summary": "Read a recording's transcript as txt, srt or vtt. How an agent reads what was said.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "chapters"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_chapters_suggest",
+    "name": "chapters.suggest",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Recording id, an unambiguous id prefix, or `last`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RecordingIdParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "Chapter": {
+          "description": "A suggested chapter.",
+          "properties": {
+            "source": {
+              "description": "`start`, `marker` or `transcript`.",
+              "type": "string"
+            },
+            "startSeconds": {
+              "format": "double",
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "startSeconds",
+            "title",
+            "source"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "chapters": {
+          "items": {
+            "$ref": "#/$defs/Chapter"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "chapters"
+      ],
+      "title": "ChaptersResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Suggest chapters from markers and long pauses in the transcript. Summaries are left to the client.",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,

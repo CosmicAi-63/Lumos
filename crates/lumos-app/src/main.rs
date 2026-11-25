@@ -98,6 +98,29 @@ fn open_path(path: String) -> Result<(), String> {
     Command::new("open").arg(&path).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// Open one pane of System Settings > Privacy & Security and show Lumos.app in Finder, so the
+/// user can drag it into the list (dropping it there turns the permission on). Changes nothing itself.
+#[tauri::command]
+fn open_privacy_pane(kind: String) -> Result<(), String> {
+    let pane = match kind.as_str() {
+        "screen" => "Privacy_ScreenCapture",
+        "camera" => "Privacy_Camera",
+        "microphone" => "Privacy_Microphone",
+        "accessibility" => "Privacy_Accessibility",
+        other => return Err(format!("unknown permission '{other}'")),
+    };
+    Command::new("open")
+        .arg(format!("x-apple.systempreferences:com.apple.preference.security?{pane}"))
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // Reveal the enclosing .app (or the binary itself when running unbundled).
+    if let Ok(exe) = std::env::current_exe() {
+        let app = exe.ancestors().find(|p| p.extension().is_some_and(|e| e == "app")).map(|p| p.to_path_buf()).unwrap_or(exe);
+        Command::new("open").arg("-R").arg(app).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn quit(app: AppHandle, state: State<'_, Arc<App>>) -> Result<(), String> {
     state.quitting.store(true, Ordering::SeqCst);
@@ -148,7 +171,7 @@ fn main() {
 
     let built = tauri::Builder::default()
         .manage(app_state.clone())
-        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_folder, pick_files, open_path, quit])
+        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_folder, pick_files, open_path, open_privacy_pane, quit])
         .setup(move |app| {
             // Forward engine events to every window.
             let mut rx = engine.events();

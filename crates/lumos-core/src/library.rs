@@ -401,9 +401,10 @@ impl Inner {
         let model = p
             .model
             .clone()
+            .or_else(|| self.settings().advanced.whisper_model_path.clone())
             .or_else(|| std::env::var("LUMOS_WHISPER_MODEL").ok())
             .map(|m| expand_tilde(&m))
-            .ok_or_else(|| ToolError::invalid_params("no whisper model: pass `model` (a ggml-*.bin path) or set LUMOS_WHISPER_MODEL"))?;
+            .ok_or_else(|| ToolError::invalid_params("no whisper model: pass `model` (a ggml-*.bin path) or set Settings > advanced.whisperModelPath"))?;
         if !model.is_file() {
             return Err(ToolError::invalid_params(format!("whisper model not found: {}", model.display())));
         }
@@ -443,6 +444,33 @@ impl Inner {
         let text = std::fs::read_to_string(&path)
             .map_err(|_| ToolError::new(ErrorCode::NotFound, "no transcript yet; run transcript.create first"))?;
         Ok(TranscriptGetResult { format, text })
+    }
+
+    /// Chapters from the user's markers, plus a new chapter wherever the transcript has a long pause.
+    /// Titles of the second kind are the first words said after the pause; summaries are left to the client.
+    pub(crate) fn chapters_suggest(&self, p: RecordingIdParams) -> ToolResult<ChaptersResult> {
+        let e = find(self.entries(), &p.id)?;
+        let mut chapters = vec![Chapter { start_seconds: 0.0, title: "Start".into(), source: "start".into() }];
+        for (i, m) in e.manifest.markers.iter().enumerate() {
+            chapters.push(Chapter {
+                start_seconds: m.at_us as f64 / 1e6,
+                title: m.label.clone().unwrap_or_else(|| format!("Marker {}", i + 1)),
+                source: "marker".into(),
+            });
+        }
+        if let Ok(srt) = std::fs::read_to_string(e.bundle.join("captions").join("transcript.srt")) {
+            let mut prev_end = 0.0;
+            for cue in parse_srt(&srt) {
+                let near_marker = chapters.iter().any(|c| (c.start_seconds - cue.0).abs() < 5.0);
+                if cue.0 - prev_end >= 6.0 && !near_marker {
+                    let title: String = cue.2.split_whitespace().take(6).collect::<Vec<_>>().join(" ");
+                    chapters.push(Chapter { start_seconds: cue.0, title, source: "transcript".into() });
+                }
+                prev_end = cue.1;
+            }
+        }
+        chapters.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
+        Ok(ChaptersResult { chapters })
     }
 
     // ---- import -----------------------------------------------------------
@@ -700,4 +728,22 @@ async fn import_one(save: &Path, path: &Path, title: Option<&str>, tags: &[Strin
         let _ = lumos_media::thumbnail(&out, (duration_us / 2).min(1_000_000), &bundle.join("thumb.jpg")).await;
     }
     Ok(entry.summary())
+}
+
+/// `(start, end, text)` in seconds for each SRT cue.
+fn parse_srt(srt: &str) -> Vec<(f64, f64, String)> {
+    fn secs(t: &str) -> Option<f64> {
+        let (hms, ms) = t.trim().split_once(',')?;
+        let mut it = hms.split(':').map(|x| x.parse::<f64>().ok());
+        Some(it.next()?? * 3600.0 + it.next()?? * 60.0 + it.next()?? + ms.parse::<f64>().ok()? / 1000.0)
+    }
+    srt.replace("\r\n", "\n")
+        .split("\n\n")
+        .filter_map(|block| {
+            let mut lines = block.lines().filter(|l| !l.trim().is_empty());
+            lines.next()?;
+            let (a, b) = lines.next()?.split_once("-->")?;
+            Some((secs(a)?, secs(b)?, lines.collect::<Vec<_>>().join(" ").trim().to_string()))
+        })
+        .collect()
 }

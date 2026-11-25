@@ -9,7 +9,8 @@
         "cameraBitrateKbps": null,
         "encoder": "hardware",
         "logLevel": "info",
-        "screenBitrateKbps": null
+        "screenBitrateKbps": null,
+        "whisperModelPath": null
       }
     },
     "audio": {
@@ -152,6 +153,14 @@
           "format": "uint32",
           "default": null,
           "minimum": 0
+        },
+        "whisperModelPath": {
+          "description": "Path to a whisper.cpp `ggml-*.bin` model, used by transcripts when none is passed.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         }
       },
       "additionalProperties": false

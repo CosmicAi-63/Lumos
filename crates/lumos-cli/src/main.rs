@@ -64,6 +64,8 @@ enum Cmd {
     /// Browse, rename and delete saved recordings.
     #[command(subcommand)]
     Library(LibraryCmd),
+    /// Suggest chapters from markers and pauses in the transcript.
+    Chapters { id: String },
     /// Transcribe recordings and read transcripts.
     #[command(subcommand)]
     Transcript(TranscriptCmd),
@@ -412,6 +414,7 @@ fn plan(cmd: Cmd) -> ToolResult<Plan> {
             LibraryCmd::Reveal { id, bundle } => Tool("library.reveal", json!({ "id": id, "which": bundle.then_some("bundle") })),
         },
         Cmd::Recover { id, no_wait } => Tool("library.recover", json!({ "id": id, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS })),
+        Cmd::Chapters { id } => Tool("chapters.suggest", json!({ "id": id })),
         Cmd::Transcript(x) => match x {
             TranscriptCmd::Create { id, model, language, no_wait } => Tool(
                 "transcript.create",

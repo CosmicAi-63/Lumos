@@ -279,3 +279,36 @@ async fn search_matches_transcript_text_and_flags_has_transcript() {
     assert!(got["text"].as_str().unwrap().contains("Kubernetes"));
     h.server.abort();
 }
+
+#[tokio::test]
+async fn chapters_come_from_markers_and_transcript_pauses() {
+    let h = harness().await;
+    let c = connect(&h).await;
+    let st = c.call("recording.start", json!({ "countdownSeconds": 0, "title": "Chaptered" })).await.unwrap();
+    let id = st["recordingId"].as_str().unwrap().to_string();
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    c.call("recording.mark", json!({ "label": "Demo begins" })).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+    c.call("recording.stop", json!({ "wait": true, "timeoutMs": 30000 })).await.unwrap();
+
+    let list = c.call("library.list", json!({})).await.unwrap();
+    let bundle = list["items"][0]["bundlePath"].as_str().unwrap().to_string();
+    let dir = Path::new(&bundle).join("captions");
+    std::fs::create_dir_all(&dir).unwrap();
+    // Cue 2 starts 20 s after cue 1 ends: a long pause, far from the marker.
+    std::fs::write(
+        dir.join("transcript.srt"),
+        "1\n00:00:00,000 --> 00:00:03,000\n Welcome everyone.\n\n2\n00:00:23,000 --> 00:00:27,000\n Now let us talk about pricing and plans today.\n\n",
+    )
+    .unwrap();
+
+    let r = c.call("chapters.suggest", json!({ "id": id })).await.unwrap();
+    let ch = r["chapters"].as_array().unwrap();
+    let sources: Vec<&str> = ch.iter().map(|x| x["source"].as_str().unwrap()).collect();
+    assert_eq!(sources, ["start", "marker", "transcript"], "{r}");
+    assert_eq!(ch[1]["title"], "Demo begins");
+    assert!((0.3..1.0).contains(&ch[1]["startSeconds"].as_f64().unwrap()), "{r}");
+    assert_eq!(ch[2]["title"], "Now let us talk about pricing");
+    assert_eq!(ch[2]["startSeconds"].as_f64().unwrap(), 23.0);
+    h.server.abort();
+}

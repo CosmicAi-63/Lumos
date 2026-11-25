@@ -443,7 +443,7 @@ pub struct ExportResult {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TranscriptCreateParams {
     pub id: String,
-    /// Path to a whisper.cpp `ggml-*.bin` model. Default: `$LUMOS_WHISPER_MODEL`.
+    /// Path to a whisper.cpp `ggml-*.bin` model. Default: setting `advanced.whisperModelPath`, then `$LUMOS_WHISPER_MODEL`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// Language code such as `en`, or `auto` (default).
@@ -478,6 +478,22 @@ pub struct TranscriptGetParams {
 pub struct TranscriptGetResult {
     pub format: String,
     pub text: String,
+}
+
+/// A suggested chapter.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct Chapter {
+    pub start_seconds: f64,
+    pub title: String,
+    /// `start`, `marker` or `transcript`.
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChaptersResult {
+    pub chapters: Vec<Chapter>,
 }
 
 // ---- import ----------------------------------------------------------------
