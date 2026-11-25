@@ -9,6 +9,7 @@ members = [
     "crates/lumos-core",
     "crates/lumosd",
     "crates/lumos-cli",
+    "crates/lumos-app",
     "xtask",
 ]
 

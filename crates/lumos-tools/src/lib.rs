@@ -133,24 +133,39 @@ fn build() -> Vec<ToolDef> {
         // permissions / sources
         tool!("permissions.status", "Screen, camera, microphone and accessibility permission states.", Empty => PermissionStatus, ReadOnly, ALL, None, ["permissions", "status"]),
         tool!("sources.displays", "Displays that can be recorded.", Empty => Vec<Display>, ReadOnly, ALL, None, ["sources", "displays"]),
-        tool!("sources.cameras", "Cameras.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "cameras"]),
-        tool!("sources.microphones", "Microphones.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "mics"]),
+        tool!("sources.cameras", "Cameras that can be used for the face bubble.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "cameras"]),
+        tool!("sources.microphones", "Microphones that can be recorded.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "mics"]),
         // recording
         tool!("recording.start", "Start recording. Returns once the countdown begins.", StartParams => RecorderStatus, Capture, ALL_OPT_IN, Some(&[S::Idle]), ["record", "start"]),
         tool!("recording.pause", "Pause; closes the current segment.", Empty => RecorderStatus, Capture, ALL, Some(&[S::Recording]), ["record", "pause"]),
         tool!("recording.resume", "Resume into a new segment.", Empty => RecorderStatus, Capture, ALL_OPT_IN, Some(&[S::Paused]), ["record", "resume"]),
         tool!("recording.stop", "Stop and save to the save folder. `wait` blocks until the file exists.", StopParams => StopResult, Capture, ALL, Some(ACTIVE), ["record", "stop"]),
         tool!("recording.cancel", "Stop and discard the recording (moved to the Trash).", ConfirmParams => CancelResult, Destructive, ALL, Some(CANCELLABLE), ["record", "cancel"]),
-        tool!("recording.status", "Current recorder state.", Empty => RecorderStatus, ReadOnly, ALL, None, ["record", "status"]),
+        tool!("recording.status", "Current recorder state, elapsed time and any jobs still saving.", Empty => RecorderStatus, ReadOnly, ALL, None, ["record", "status"]),
         tool!("recording.mark", "Add a marker at the current time.", MarkParams => MarkResult, Mutating, ALL, Some(ACTIVE), ["record", "mark"]),
         // settings
         tool!("settings.get", "Read all settings or one dotted path.", SettingsGetParams => Value, ReadOnly, ALL, None, ["settings", "get"]),
         tool!("settings.set", "Change settings by dotted path. Validated before saving.", SettingsSetParams => SettingsChanged, Mutating, ALL, None, ["settings", "set"], idem),
         tool!("settings.reset", "Reset all settings, or one dotted path, to defaults.", SettingsResetParams => SettingsChanged, Mutating, HUMAN, None, ["settings", "reset"], idem),
         tool!("settings.schema", "JSON Schema of settings.json.", Empty => Value, ReadOnly, ALL, None, ["settings", "schema"]),
+        // library
+        tool!("library.list", "List saved recordings (filter, sort, page).", LibraryListParams => LibraryListResult, ReadOnly, ALL, None, ["library", "ls"]),
+        tool!("library.get", "One recording's details and manifest. Id, id prefix or `last`.", RecordingIdParams => RecordingDetails, ReadOnly, ALL, None, ["library", "show"]),
+        tool!("library.update", "Rename (moves the files) or re-tag a recording.", LibraryUpdateParams => RecordingSummary, Mutating, ALL, None, ["library", "update"]),
+        tool!("library.delete", "Move a recording to the Trash. Needs confirm: true.", LibraryDeleteParams => LibraryDeleteResult, Destructive, ALL_OPT_IN, None, ["library", "rm"]),
+        tool!("library.reveal", "Show a recording's file in Finder.", LibraryRevealParams => PathResult, ReadOnly, HUMAN, None, ["library", "reveal"]),
+        tool!("library.recover", "Save recordings interrupted by a crash from .lumos-inprogress.", RecoverParams => RecoverResult, Mutating, ALL, None, ["recover"], long),
+        // export / import
+        tool!("export.presets", "Export presets: MP4 sizes, GIF, audio only.", Empty => Vec<ExportPreset>, ReadOnly, ALL, None, ["export", "presets"]),
+        tool!("export.create", "Export a recording with a preset (job). `wait` blocks until done.", ExportParams => ExportResult, Mutating, ALL, None, ["export", "create"], long),
+        tool!("import.formats", "File types the importers accept.", Empty => Vec<ImportFormat>, ReadOnly, ALL, None, ["import", "formats"]),
+        tool!("import.create", "Import video files into the library (job). `wait` blocks until done.", ImportParams => ImportResult, Mutating, ALL, None, ["import", "create"], long),
+        // transcripts
+        tool!("transcript.create", "Transcribe a recording locally with whisper.cpp (job). `wait` blocks until done.", TranscriptCreateParams => TranscriptCreateResult, Mutating, ALL, None, ["transcript", "create"], long),
+        tool!("transcript.get", "Read a recording's transcript as txt, srt or vtt. How an agent reads what was said.", TranscriptGetParams => TranscriptGetResult, ReadOnly, ALL, None, ["transcript", "get"]),
         // jobs
         tool!("jobs.list", "Recent jobs, newest first.", JobListParams => Vec<Job>, ReadOnly, ALL, None, ["jobs", "ls"]),
-        tool!("jobs.get", "One job.", JobIdParams => Job, ReadOnly, ALL, None, ["jobs", "show"]),
+        tool!("jobs.get", "Status, progress and result of one background job (save, export, import).", JobIdParams => Job, ReadOnly, ALL, None, ["jobs", "show"]),
         tool!("jobs.wait", "Wait for a job to finish (default 55 s). On timeout the job keeps running.", JobWaitParams => Job, ReadOnly, ALL, None, ["jobs", "wait"]),
     ]
 }

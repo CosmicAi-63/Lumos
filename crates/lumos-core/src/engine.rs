@@ -26,7 +26,7 @@ use crate::recorder::Recorder;
 use crate::settings::SettingsStore;
 
 /// Longest a single `jobs.wait` / `recording.stop --wait` may block.
-const MAX_WAIT_MS: u64 = 10 * 60 * 1000;
+pub(crate) const MAX_WAIT_MS: u64 = 10 * 60 * 1000;
 pub(crate) const DEFAULT_WAIT_MS: u64 = 55_000;
 
 pub struct EngineOptions {
@@ -217,6 +217,22 @@ impl Inner {
                 json(self.mark(p.label).await?)
             }
 
+            "library.list" => json(self.library_list(parse(params)?)?),
+            "library.get" => {
+                let p: RecordingIdParams = parse(params)?;
+                json(self.library_get(&p.id)?)
+            }
+            "library.update" => json(self.library_update(parse(params)?)?),
+            "library.delete" => json(self.library_delete(parse(params)?)?),
+            "library.reveal" => json(self.library_reveal(parse(params)?)?),
+            "transcript.create" => json(self.transcript_create(parse(params)?).await?),
+            "transcript.get" => json(self.transcript_get(parse(params)?)?),
+            "library.recover" => json(self.library_recover(parse(params)?).await?),
+            "export.presets" => json(self.export_presets()),
+            "export.create" => json(self.export_create(parse(params)?).await?),
+            "import.formats" => json(self.import_formats()),
+            "import.create" => json(self.import_create(parse(params)?).await?),
+
             "settings.get" => {
                 let p: SettingsGetParams = parse(params)?;
                 self.settings.lock().unwrap().get_path(p.path.as_deref())
@@ -315,7 +331,7 @@ impl Inner {
             problem(
                 "RECOVERY_PENDING",
                 format!("{} unfinished recording(s) in .lumos-inprogress", in_progress.len()),
-                "automatic recovery arrives with library.recover (M2)",
+                "lumos recover",
             );
         }
         Health {

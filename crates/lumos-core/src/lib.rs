@@ -7,6 +7,7 @@ mod engine;
 mod finalize;
 mod fsutil;
 mod jobs;
+mod library;
 mod policy;
 mod recorder;
 mod settings;

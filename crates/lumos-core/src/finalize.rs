@@ -51,7 +51,7 @@ fn media(e: lumos_media::MediaError) -> ToolError {
     ToolError::backend(e.to_string())
 }
 
-async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput) -> ToolResult<RecordingReady> {
+pub(crate) async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput) -> ToolResult<RecordingReady> {
     let bundle = f.bundle_dir.clone();
     let work = bundle.join("work");
     std::fs::create_dir_all(&work).map_err(|e| io_err("create", &work, e))?;

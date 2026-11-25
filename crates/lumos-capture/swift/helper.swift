@@ -254,6 +254,13 @@ func ensureAccess(_ media: AVMediaType, _ what: String) async throws {
     }
 }
 
+/// Windows of the app that launched this helper (toolbar, panels), so they never appear in the
+/// video. The camera bubble is the exception: it is meant to be recorded with the screen.
+func ownWindows(_ content: SCShareableContent) -> [SCWindow] {
+    let parent = getppid()
+    return content.windows.filter { $0.owningApplication?.processID == parent && $0.title != "Lumos Camera" }
+}
+
 func resolveFilter(_ source: [String: Any], _ content: SCShareableContent) throws -> (SCContentFilter, String, CGRect?) {
     func display(_ id: String?) throws -> SCDisplay {
         let wanted: UInt32 = (id == nil || id == "main") ? CGMainDisplayID() : (UInt32(id!) ?? 0)
@@ -265,14 +272,14 @@ func resolveFilter(_ source: [String: Any], _ content: SCShareableContent) throw
     switch source["kind"] as? String ?? "display" {
     case "display":
         let d = try display(source["displayId"] as? String)
-        return (SCContentFilter(display: d, excludingWindows: []), "Display \(d.displayID)", nil)
+        return (SCContentFilter(display: d, excludingWindows: ownWindows(content)), "Display \(d.displayID)", nil)
     case "area":
         let d = try display(source["displayId"] as? String)
         guard let r = source["rect"] as? [String: Any], let x = r["x"] as? Double, let y = r["y"] as? Double,
               let w = r["w"] as? Double, let h = r["h"] as? Double, w > 0, h > 0 else {
             throw Fail(code: "INVALID_PARAMS", message: "area source needs rect {x,y,w,h}")
         }
-        return (SCContentFilter(display: d, excludingWindows: []), "Area on display \(d.displayID)", CGRect(x: x, y: y, width: w, height: h))
+        return (SCContentFilter(display: d, excludingWindows: ownWindows(content)), "Area on display \(d.displayID)", CGRect(x: x, y: y, width: w, height: h))
     case "window":
         let id = (source["windowId"] as? NSNumber)?.uint32Value
         let app = (source["app"] as? String)?.lowercased()
@@ -385,6 +392,8 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
 @main
 struct Helper {
     static func main() async {
+        // Window capture asserts (CGS_REQUIRE_INIT) unless the window-server connection exists.
+        _ = CGMainDisplayID()
         var session: Session?
         while let line = readLine() {
             guard let cmd = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any], let name = cmd["cmd"] as? String else {

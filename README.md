@@ -35,12 +35,20 @@ Every feature is a **tool**, and you can call it three ways:
 
 ## Status
 
-**M0 skeleton.** The engine, tool registry, JSON-RPC socket and `lumos` CLI work end to end with a fake capture backend: `LUMOS_BACKEND=fake lumos record start --wait` saves a real MP4 plus a `.lumos` bundle. Real screen capture on macOS is the next step (the M0 spike). See the [roadmap](docs/08-roadmap.md).
+**M0–M3 built on macOS; M4+ not started.**
+
+- Engine, tool registry, JSON-RPC socket, `lumos` CLI and `lumos mcp` (MCP server generated from the same registry).
+- Real macOS capture through a Swift helper (ScreenCaptureKit): display, mic and system audio, pause/resume as segments. Verified on one machine (macOS 15): display, area and window sources record correctly. Camera track, long-recording sync and macOS 13/14 are untested.
+- Library, export, import and recover tools.
+- `lumos-app` (Tauri): floating toolbar, camera bubble and main window hosting the engine.
+- Not done: Windows/Linux, transcription, trim UI polish, cross-version macOS testing (13/14), signed/notarized builds.
+
+See the [roadmap](docs/08-roadmap.md).
 
 ```bash
 cargo build --workspace
 cargo test --workspace            # needs ffmpeg + ffprobe on PATH
-cargo xtask schemas               # writes docs/schemas/
+cargo run -p xtask -- schemas               # writes docs/schemas/
 LUMOS_BACKEND=fake ./target/debug/lumos record start --countdown 0 --max-duration 3 --wait
 ./target/debug/lumos engine stop
 ```

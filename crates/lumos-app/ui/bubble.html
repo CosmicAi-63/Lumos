@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lumos Camera</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bubble">
+  <div class="bubble-frame circle mirror" id="frame" data-tauri-drag-region>
+    <span id="msg" data-tauri-drag-region>Starting camera…</span>
+  </div>
+  <script src="lumos.js"></script>
+  <script>
+    // The face bubble is an ordinary on-screen window, so it is recorded with the screen.
+    const frame = document.getElementById('frame');
+    let stream = null;
+
+    async function applySettings() {
+      try {
+        const cam = await lumos.call('settings.get', { path: 'camera' });
+        const shape = cam.shape === 'circle' ? 'circle' : cam.shape === 'roundedRect' ? 'rounded' : '';
+        frame.className = `bubble-frame ${shape}${cam.mirror ? ' mirror' : ''}`;
+        const px = { s: 140, m: 200, l: 280 }[cam.size] || 200;
+        await lumos.invoke('set_window_size', { label: 'bubble', width: px, height: cam.shape === 'rect' ? Math.round(px * 0.75) : px });
+      } catch (_) {}
+    }
+
+    async function startCamera() {
+      if (stream) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        const v = document.createElement('video');
+        v.autoplay = true; v.muted = true; v.playsInline = true; v.srcObject = stream;
+        frame.replaceChildren(v);
+      } catch (e) {
+        frame.replaceChildren(Object.assign(document.createElement('span'), { textContent: 'Camera preview unavailable. Allow camera access for Lumos in System Settings.' }));
+      }
+    }
+
+    function stopCamera() {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+    }
+
+    // Release the camera while the bubble is hidden so the camera light goes off.
+    document.addEventListener('visibilitychange', () => (document.hidden ? stopCamera() : startCamera()));
+    lumos.onEvent((ev) => { if (ev.type === 'settings.changed') applySettings(); });
+    applySettings();
+    if (!document.hidden) startCamera();
+  </script>
+</body>
+</html>

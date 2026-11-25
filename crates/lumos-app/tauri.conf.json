@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lumos",
+  "version": "0.1.0",
+  "identifier": "dev.lumos.app",
+  "build": { "frontendDist": "./ui" },
+  "app": {
+    "macOSPrivateApi": true,
+    "withGlobalTauri": true,
+    "security": {
+      "csp": null,
+      "assetProtocol": { "enable": true, "scope": ["**"] }
+    },
+    "windows": [
+      {
+        "label": "toolbar",
+        "title": "Lumos Toolbar",
+        "url": "toolbar.html",
+        "width": 480,
+        "height": 80,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "visibleOnAllWorkspaces": true,
+        "acceptFirstMouse": true
+      },
+      {
+        "label": "bubble",
+        "title": "Lumos Camera",
+        "url": "bubble.html",
+        "width": 200,
+        "height": 200,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "visibleOnAllWorkspaces": true,
+        "acceptFirstMouse": true
+      },
+      {
+        "label": "main",
+        "title": "Lumos",
+        "url": "index.html",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 720,
+        "minHeight": 480,
+        "visible": false,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "category": "Video",
+    "shortDescription": "Open-source screen recorder",
+    "icon": ["icons/icon.png"]
+  }
+}

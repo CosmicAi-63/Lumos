@@ -618,7 +618,7 @@
       "type": "array"
     },
     "states": null,
-    "summary": "Cameras.",
+    "summary": "Cameras that can be used for the face bubble.",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,
@@ -673,7 +673,7 @@
       "type": "array"
     },
     "states": null,
-    "summary": "Microphones.",
+    "summary": "Microphones that can be recorded.",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,
@@ -2289,7 +2289,7 @@
       "type": "object"
     },
     "states": null,
-    "summary": "Current recorder state.",
+    "summary": "Current recorder state, elapsed time and any jobs still saving.",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,
@@ -2516,6 +2516,1745 @@
     },
     "states": null,
     "summary": "JSON Schema of settings.json.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "library",
+      "ls"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_library_list",
+    "name": "library.list",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "Default 50.",
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "offset": {
+          "description": "Skip this many results.",
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "origin": {
+          "description": "`recorded` or `imported`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "query": {
+          "description": "Case-insensitive match on the title or the transcript.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sort": {
+          "description": "`newest` (default), `oldest`, `longest` or `title`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "description": "Recordings that have all of these tags.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "LibraryListParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "RecordingStatus": {
+          "enum": [
+            "recording",
+            "paused",
+            "finalizing",
+            "ready",
+            "failed",
+            "recovered"
+          ],
+          "type": "string"
+        },
+        "RecordingSummary": {
+          "properties": {
+            "bundlePath": {
+              "type": "string"
+            },
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "durationUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "hasTranscript": {
+              "default": false,
+              "description": "A transcript exists (`transcript.get` returns it).",
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "origin": {
+              "description": "`recorded` or `imported`.",
+              "type": "string"
+            },
+            "outputPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/$defs/RecordingStatus"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "thumbPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "createdAt",
+            "durationUs",
+            "status",
+            "origin",
+            "tags",
+            "bundlePath",
+            "bytes"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RecordingSummary"
+          },
+          "type": "array"
+        },
+        "total": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total"
+      ],
+      "title": "LibraryListResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "List saved recordings (filter, sort, page).",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "library",
+      "show"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_library_get",
+    "name": "library.get",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Recording id, an unambiguous id prefix, or `last`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RecordingIdParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "AppInfo": {
+          "properties": {
+            "platform": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "version",
+            "platform"
+          ],
+          "type": "object"
+        },
+        "CaptureInfo": {
+          "properties": {
+            "cameraBurnedIn": {
+              "type": "boolean"
+            },
+            "fps": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "showCursor": {
+              "type": "boolean"
+            },
+            "source": {
+              "$ref": "#/$defs/CaptureSource"
+            },
+            "sourceName": {
+              "description": "Human name of the resolved source, e.g. \"Built-in Retina Display\".",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "sourceName",
+            "fps",
+            "showCursor",
+            "cameraBurnedIn"
+          ],
+          "type": "object"
+        },
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Edits": {
+          "properties": {
+            "cuts": {
+              "items": {
+                "$ref": "#/$defs/Range"
+              },
+              "type": "array"
+            },
+            "trim": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Range"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Manifest": {
+          "properties": {
+            "app": {
+              "$ref": "#/$defs/AppInfo"
+            },
+            "capture": {
+              "$ref": "#/$defs/CaptureInfo"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "durationUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "edits": {
+              "$ref": "#/$defs/Edits",
+              "default": {}
+            },
+            "id": {
+              "type": "string"
+            },
+            "markers": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Marker"
+              },
+              "type": "array"
+            },
+            "origin": {
+              "$ref": "#/$defs/Origin"
+            },
+            "outputs": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/OutputFile"
+              },
+              "type": "array"
+            },
+            "schema": {
+              "type": "string"
+            },
+            "segments": {
+              "items": {
+                "$ref": "#/$defs/Segment"
+              },
+              "type": "array"
+            },
+            "status": {
+              "$ref": "#/$defs/RecordingStatus"
+            },
+            "tags": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            },
+            "tracks": {
+              "items": {
+                "$ref": "#/$defs/Track"
+              },
+              "type": "array"
+            },
+            "warnings": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Warning"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "schema",
+            "id",
+            "title",
+            "createdAt",
+            "status",
+            "durationUs",
+            "origin",
+            "app",
+            "capture",
+            "segments",
+            "tracks"
+          ],
+          "type": "object"
+        },
+        "Marker": {
+          "properties": {
+            "atUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "atUs"
+          ],
+          "type": "object"
+        },
+        "Origin": {
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "const": "recorded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "importer": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "imported",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "from",
+                "importer"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "OutputFile": {
+          "properties": {
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "path": {
+              "description": "Relative to the bundle, e.g. `../Demo.mp4`.",
+              "type": "string"
+            },
+            "preset": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "preset",
+            "path",
+            "createdAt",
+            "bytes"
+          ],
+          "type": "object"
+        },
+        "Range": {
+          "properties": {
+            "endUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "startUs": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "startUs",
+            "endUs"
+          ],
+          "type": "object"
+        },
+        "RecordingStatus": {
+          "enum": [
+            "recording",
+            "paused",
+            "finalizing",
+            "ready",
+            "failed",
+            "recovered"
+          ],
+          "type": "string"
+        },
+        "RecordingSummary": {
+          "properties": {
+            "bundlePath": {
+              "type": "string"
+            },
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "durationUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "hasTranscript": {
+              "default": false,
+              "description": "A transcript exists (`transcript.get` returns it).",
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "origin": {
+              "description": "`recorded` or `imported`.",
+              "type": "string"
+            },
+            "outputPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/$defs/RecordingStatus"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "thumbPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "createdAt",
+            "durationUs",
+            "status",
+            "origin",
+            "tags",
+            "bundlePath",
+            "bytes"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "Segment": {
+          "properties": {
+            "endUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "startUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "wallStart": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "startUs",
+            "endUs",
+            "wallStart"
+          ],
+          "type": "object"
+        },
+        "Track": {
+          "properties": {
+            "codec": {
+              "type": "string"
+            },
+            "deviceName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "files": {
+              "description": "Segment files, relative to the bundle.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/TrackKind"
+            },
+            "offsetUs": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "codec",
+            "files"
+          ],
+          "type": "object"
+        },
+        "TrackKind": {
+          "enum": [
+            "screen",
+            "camera",
+            "mic",
+            "systemAudio"
+          ],
+          "type": "string"
+        },
+        "Warning": {
+          "properties": {
+            "atUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "atUs",
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "manifest": {
+          "$ref": "#/$defs/Manifest"
+        },
+        "summary": {
+          "$ref": "#/$defs/RecordingSummary"
+        }
+      },
+      "required": [
+        "summary",
+        "manifest"
+      ],
+      "title": "RecordingDetails",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "One recording's details and manifest. Id, id prefix or `last`.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "library",
+      "update"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_library_update",
+    "name": "library.update",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tags": {
+          "description": "Replaces all tags.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "Renaming also renames the MP4 and the bundle.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "LibraryUpdateParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "RecordingStatus": {
+          "enum": [
+            "recording",
+            "paused",
+            "finalizing",
+            "ready",
+            "failed",
+            "recovered"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "bundlePath": {
+          "type": "string"
+        },
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "durationUs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "hasTranscript": {
+          "default": false,
+          "description": "A transcript exists (`transcript.get` returns it).",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "description": "`recorded` or `imported`.",
+          "type": "string"
+        },
+        "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RecordingStatus"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "thumbPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "createdAt",
+        "durationUs",
+        "status",
+        "origin",
+        "tags",
+        "bundlePath",
+        "bytes"
+      ],
+      "title": "RecordingSummary",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Rename (moves the files) or re-tag a recording.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "library",
+      "rm"
+    ],
+    "effect": "destructive",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_library_delete",
+    "name": "library.delete",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Must be `true`.",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "keepOutput": {
+          "default": false,
+          "description": "Keep the MP4 and move only the source tracks to the Trash.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "confirm"
+      ],
+      "title": "LibraryDeleteParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "trashed": {
+          "description": "Where the items went (the Trash).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "trashed"
+      ],
+      "title": "LibraryDeleteResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Move a recording to the Trash. Needs confirm: true.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": true,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "library",
+      "reveal"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_library_reveal",
+    "name": "library.reveal",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "which": {
+          "description": "`output` (default) or `bundle`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "LibraryRevealParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "PathResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Show a recording's file in Finder.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "recover"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": true,
+    "mcpName": "lumos_library_recover",
+    "name": "library.recover",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Recording id to recover; default: every unfinished recording.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timeoutMs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "RecoverParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "RecordingStatus": {
+          "enum": [
+            "recording",
+            "paused",
+            "finalizing",
+            "ready",
+            "failed",
+            "recovered"
+          ],
+          "type": "string"
+        },
+        "RecordingSummary": {
+          "properties": {
+            "bundlePath": {
+              "type": "string"
+            },
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "durationUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "hasTranscript": {
+              "default": false,
+              "description": "A transcript exists (`transcript.get` returns it).",
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "origin": {
+              "description": "`recorded` or `imported`.",
+              "type": "string"
+            },
+            "outputPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/$defs/RecordingStatus"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "thumbPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "createdAt",
+            "durationUs",
+            "status",
+            "origin",
+            "tags",
+            "bundlePath",
+            "bytes"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "recovered": {
+          "description": "Filled when `wait` is set and the job finished.",
+          "items": {
+            "$ref": "#/$defs/RecordingSummary"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "skipped": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "RecoverResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Save recordings interrupted by a crash from .lumos-inprogress.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "export",
+      "presets"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_export_presets",
+    "name": "export.presets",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ExportPreset": {
+          "properties": {
+            "fps": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "description": "`mp4`, `gif` or `audio`.",
+              "type": "string"
+            },
+            "maxHeight": {
+              "description": "Downscale to at most this height. `None` keeps the size.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "videoKbps": {
+              "description": "Video bitrate in kbit/s (mp4 only).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "kind"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/ExportPreset"
+      },
+      "title": "Array_of_ExportPreset",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Export presets: MP4 sizes, GIF, audio only.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "export",
+      "create"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": true,
+    "mcpName": "lumos_export_create",
+    "name": "export.create",
+    "params": {
+      "$defs": {
+        "TimeRange": {
+          "additionalProperties": false,
+          "description": "A span of the recording in seconds from its start. `endSeconds` defaults to the end.",
+          "properties": {
+            "endSeconds": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "startSeconds": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "outputPath": {
+          "description": "Default: next to the recording's MP4.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "preset": {
+          "description": "Preset id from `export.presets`.",
+          "type": "string"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TimeRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Export only this part of the recording, in seconds. The original is never changed."
+        },
+        "timeoutMs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "preset"
+      ],
+      "title": "ExportParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "durationUs": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "ExportResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Export a recording with a preset (job). `wait` blocks until done.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "import",
+      "formats"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_import_formats",
+    "name": "import.formats",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ImportFormat": {
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "extensions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "importer": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "importer",
+            "extensions",
+            "description"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/ImportFormat"
+      },
+      "title": "Array_of_ImportFormat",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "File types the importers accept.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "import",
+      "create"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": true,
+    "mcpName": "lumos_import_create",
+    "name": "import.create",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "paths": {
+          "description": "Video files to bring into the library.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "timeoutMs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "Default: the file name.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "paths"
+      ],
+      "title": "ImportParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "RecordingStatus": {
+          "enum": [
+            "recording",
+            "paused",
+            "finalizing",
+            "ready",
+            "failed",
+            "recovered"
+          ],
+          "type": "string"
+        },
+        "RecordingSummary": {
+          "properties": {
+            "bundlePath": {
+              "type": "string"
+            },
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "durationUs": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "hasTranscript": {
+              "default": false,
+              "description": "A transcript exists (`transcript.get` returns it).",
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "origin": {
+              "description": "`recorded` or `imported`.",
+              "type": "string"
+            },
+            "outputPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/$defs/RecordingStatus"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "thumbPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "createdAt",
+            "durationUs",
+            "status",
+            "origin",
+            "tags",
+            "bundlePath",
+            "bytes"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "recordings": {
+          "items": {
+            "$ref": "#/$defs/RecordingSummary"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "skipped": {
+          "description": "`(path, reason)` pairs for files that could not be imported.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "ImportResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Import video files into the library (job). `wait` blocks until done.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "transcript",
+      "create"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": true,
+    "mcpName": "lumos_transcript_create",
+    "name": "transcript.create",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Transcribe a recording locally with whisper.cpp (job).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "language": {
+          "description": "Language code such as `en`, or `auto` (default).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "description": "Path to a whisper.cpp `ggml-*.bin` model. Default: `$LUMOS_WHISPER_MODEL`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timeoutMs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "TranscriptCreateParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "path": {
+          "description": "The `.srt` file, once the job is done.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "TranscriptCreateResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Transcribe a recording locally with whisper.cpp (job). `wait` blocks until done.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "transcript",
+      "get"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_transcript_get",
+    "name": "transcript.get",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "description": "`txt` (default), `srt` or `vtt`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "TranscriptGetParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "text"
+      ],
+      "title": "TranscriptGetResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Read a recording's transcript as txt, srt or vtt. How an agent reads what was said.",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,
@@ -2827,7 +4566,7 @@
       "type": "object"
     },
     "states": null,
-    "summary": "One job.",
+    "summary": "Status, progress and result of one background job (save, export, import).",
     "surfaces": {
       "agent": true,
       "agentOptIn": false,

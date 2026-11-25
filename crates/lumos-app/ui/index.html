@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lumos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page">
+  <div class="app">
+    <header class="top">
+      <h1>Lumos</h1>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="library" aria-selected="true">Library</button>
+        <button class="tab" role="tab" data-tab="settings" aria-selected="false">Settings</button>
+      </div>
+      <span class="spacer"></span>
+      <input class="search" id="search" type="search" placeholder="Search recordings" aria-label="Search recordings">
+      <button class="btn" id="import">Import…</button>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+  <div id="modal" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="lumos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

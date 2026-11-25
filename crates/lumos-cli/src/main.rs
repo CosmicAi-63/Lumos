@@ -3,6 +3,8 @@
 //! Every command is one engine tool from the `lumos-tools` registry; `lumos call`
 //! reaches any tool by name. This crate never links the engine itself.
 
+mod mcp;
+
 use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -59,6 +61,28 @@ enum Cmd {
     /// Stream engine events as JSON lines.
     #[command(subcommand)]
     Events(EventsCmd),
+    /// Browse, rename and delete saved recordings.
+    #[command(subcommand)]
+    Library(LibraryCmd),
+    /// Transcribe recordings and read transcripts.
+    #[command(subcommand)]
+    Transcript(TranscriptCmd),
+    /// Save recordings interrupted by a crash.
+    Recover {
+        /// One unfinished recording (id or prefix); default: all.
+        id: Option<String>,
+        /// Return right away instead of waiting for the files.
+        #[arg(long)]
+        no_wait: bool,
+    },
+    /// Export a recording as MP4, GIF or audio.
+    #[command(subcommand)]
+    Export(ExportCmd),
+    /// Bring existing video files into the library.
+    #[command(subcommand)]
+    Import(ImportCmd),
+    /// Run the MCP server on stdin/stdout, for AI agents (Claude, Cursor, …).
+    Mcp,
     /// List every engine tool.
     Tools,
     /// Call any engine tool by name with JSON params.
@@ -194,6 +218,117 @@ enum JobsCmd {
 }
 
 #[derive(Subcommand)]
+enum LibraryCmd {
+    /// List recordings, newest first.
+    Ls {
+        /// Title contains this text.
+        query: Option<String>,
+        /// Only recordings with this tag (repeatable).
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+        /// `recorded` or `imported`.
+        #[arg(long)]
+        origin: Option<String>,
+        /// `newest`, `oldest`, `longest` or `title`.
+        #[arg(long)]
+        sort: Option<String>,
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+    /// Details of one recording (id, id prefix or `last`).
+    Show { id: String },
+    /// Rename a recording (moves its files) or replace its tags.
+    Update {
+        id: String,
+        #[arg(long)]
+        title: Option<String>,
+        /// New tag list (repeatable); replaces the old one.
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+    },
+    /// Move a recording to the Trash.
+    Rm {
+        id: String,
+        /// Don't ask.
+        #[arg(long)]
+        yes: bool,
+        /// Keep the MP4; trash only the source tracks.
+        #[arg(long)]
+        keep_output: bool,
+    },
+    /// Show the file in Finder.
+    Reveal {
+        id: String,
+        /// Reveal the .lumos bundle instead of the MP4.
+        #[arg(long)]
+        bundle: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum ExportCmd {
+    /// Available presets.
+    Presets,
+    /// Export a recording. Preset ids come from `lumos export presets`.
+    Create {
+        id: String,
+        preset: String,
+        /// Where to write; default: next to the recording.
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Export only part of the recording, in seconds: `START-END` or `START-` (e.g. `0-10`).
+        #[arg(long)]
+        range: Option<String>,
+        /// Return right away with a job id.
+        #[arg(long)]
+        no_wait: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum TranscriptCmd {
+    /// Transcribe a recording locally with whisper.cpp.
+    Create {
+        id: String,
+        /// Path to a ggml-*.bin model (default: $LUMOS_WHISPER_MODEL).
+        #[arg(long)]
+        model: Option<PathBuf>,
+        /// Language code, or `auto`.
+        #[arg(long)]
+        language: Option<String>,
+        /// Return right away with a job id.
+        #[arg(long)]
+        no_wait: bool,
+    },
+    /// Print a transcript.
+    Get {
+        id: String,
+        /// txt, srt or vtt.
+        #[arg(long)]
+        format: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ImportCmd {
+    /// Accepted file types.
+    Formats,
+    /// Import video files.
+    Create {
+        #[arg(required = true, num_args = 1..)]
+        paths: Vec<PathBuf>,
+        /// Title (single file only); default: the file name.
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+        /// Return right away with a job id.
+        #[arg(long)]
+        no_wait: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum EventsCmd {
     /// Print events whose type starts with any prefix (default: all).
     Subscribe { topics: Vec<String> },
@@ -207,9 +342,12 @@ enum Plan {
     StartAndWait(Value),
     /// `recording.cancel` after confirmation.
     Cancel { yes: bool },
+    /// A destructive tool, run after confirmation (`--yes` skips the prompt).
+    Confirm { tool: &'static str, params: Value, yes: bool, prompt: String },
     /// `system.shutdown`, without starting an engine just to stop it.
     StopEngine,
     Events(Vec<String>),
+    Mcp,
     Tools,
     Call(String, Value),
 }
@@ -261,12 +399,61 @@ fn plan(cmd: Cmd) -> ToolResult<Plan> {
             JobsCmd::Wait { job_id, timeout_ms } => Tool("jobs.wait", json!({ "jobId": job_id, "timeoutMs": timeout_ms })),
         },
         Cmd::Events(EventsCmd::Subscribe { topics }) => Plan::Events(if topics.is_empty() { vec!["*".into()] } else { topics }),
+        Cmd::Library(l) => match l {
+            LibraryCmd::Ls { query, tags, origin, sort, limit } => Tool("library.list", json!({ "query": query, "tags": tags, "origin": origin, "sort": sort, "limit": limit })),
+            LibraryCmd::Show { id } => Tool("library.get", json!({ "id": id })),
+            LibraryCmd::Update { id, title, tags } => Tool("library.update", json!({ "id": id, "title": title, "tags": (!tags.is_empty()).then_some(tags) })),
+            LibraryCmd::Rm { id, yes, keep_output } => Plan::Confirm {
+                tool: "library.delete",
+                params: json!({ "id": id, "confirm": true, "keepOutput": keep_output }),
+                yes,
+                prompt: format!("Move recording {id} to the Trash? [y/N] "),
+            },
+            LibraryCmd::Reveal { id, bundle } => Tool("library.reveal", json!({ "id": id, "which": bundle.then_some("bundle") })),
+        },
+        Cmd::Recover { id, no_wait } => Tool("library.recover", json!({ "id": id, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS })),
+        Cmd::Transcript(x) => match x {
+            TranscriptCmd::Create { id, model, language, no_wait } => Tool(
+                "transcript.create",
+                json!({ "id": id, "model": model.map(|p| abs(&p)), "language": language, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS }),
+            ),
+            TranscriptCmd::Get { id, format } => Tool("transcript.get", json!({ "id": id, "format": format })),
+        },
+        Cmd::Export(x) => match x {
+            ExportCmd::Presets => Tool("export.presets", e()),
+            ExportCmd::Create { id, preset, out, range, no_wait } => {
+                let range = match range.as_deref().map(parse_range).transpose() {
+                    Ok(r) => r,
+                    Err(msg) => return Err(ToolError::invalid_params(msg)),
+                };
+                Tool(
+                    "export.create",
+                    json!({ "id": id, "preset": preset, "outputPath": out.map(|p| abs(&p)), "range": range, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS }),
+                )
+            }
+        },
+        Cmd::Import(x) => match x {
+            ImportCmd::Formats => Tool("import.formats", e()),
+            ImportCmd::Create { paths, title, tags, no_wait } => Tool(
+                "import.create",
+                json!({ "paths": paths.iter().map(|p| abs(p)).collect::<Vec<_>>(), "title": title, "tags": tags, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS }),
+            ),
+        },
+        Cmd::Mcp => Plan::Mcp,
         Cmd::Tools => Plan::Tools,
         Cmd::Call { tool, params } => {
             let p = serde_json::from_str(&params).map_err(|e| ToolError::invalid_params(format!("--params is not JSON: {e}")))?;
             Plan::Call(tool, p)
         }
     })
+}
+
+/// Longest wait the engine allows for one call (10 minutes).
+const LONG_WAIT_MS: u64 = 600_000;
+
+/// The engine runs elsewhere, so paths must not depend on our working directory.
+fn abs(p: &std::path::Path) -> String {
+    std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf()).display().to_string()
 }
 
 fn start_params(a: StartArgs) -> StartParams {
@@ -327,6 +514,10 @@ async fn run(cli: Cli) -> ToolResult<()> {
             print_tools(&out);
             Ok(())
         }
+        Plan::Mcp => {
+            let mut live = Live { paths, autostart, client: None };
+            mcp::serve(&mut live, tokio::io::stdin(), tokio::io::stdout()).await.map_err(|e| ToolError::backend(format!("mcp stdio: {e}")))
+        }
         Plan::StopEngine => match connect(&paths, false).await {
             Ok(c) => {
                 let v = c.call("system.shutdown", json!({})).await?;
@@ -358,6 +549,15 @@ async fn run(cli: Cli) -> ToolResult<()> {
             let c = connect(&paths, autostart).await?;
             let v = c.call("recording.cancel", json!({ "confirm": true })).await?;
             out.print("recording.cancel", &v);
+            Ok(())
+        }
+        Plan::Confirm { tool, params, yes, prompt } => {
+            if !yes && !confirm(&prompt)? {
+                return Err(ToolError::new(ErrorCode::Cancelled, "not deleted"));
+            }
+            let c = connect(&paths, autostart).await?;
+            let v = c.call(tool, strip_nulls(params)).await?;
+            out.print(tool, &v);
             Ok(())
         }
         Plan::Events(topics) => {
@@ -440,6 +640,10 @@ fn confirm(prompt: &str) -> ToolResult<bool> {
 // ---- engine connection -------------------------------------------------------
 
 async fn connect(paths: &Paths, autostart: bool) -> ToolResult<Client> {
+    connect_as(paths, autostart, ClientKind::Cli, "lumos").await
+}
+
+async fn connect_as(paths: &Paths, autostart: bool, kind: ClientKind, name: &str) -> ToolResult<Client> {
     let client = match Client::connect(&paths.socket).await {
         Ok(c) => c,
         Err(e) if e.code == ErrorCode::EngineUnavailable && autostart => {
@@ -449,11 +653,35 @@ async fn connect(paths: &Paths, autostart: bool) -> ToolResult<Client> {
         Err(e) => return Err(e),
     };
     let hello = json!({
-        "client": ClientInfo { kind: ClientKind::Cli, name: "lumos".into(), version: env!("CARGO_PKG_VERSION").into() },
+        "client": ClientInfo { kind, name: name.into(), version: env!("CARGO_PKG_VERSION").into() },
         "protocol": PROTOCOL_VERSION,
     });
     client.call("session.hello", hello).await?;
     Ok(client)
+}
+
+/// The MCP server's engine connection: opened on the first tool call (so listing
+/// tools never starts the engine) and reopened once if the engine restarted.
+struct Live {
+    paths: Paths,
+    autostart: bool,
+    client: Option<Client>,
+}
+
+impl mcp::EngineCall for Live {
+    async fn call(&mut self, tool: &str, params: Value) -> ToolResult<Value> {
+        for attempt in 0..2 {
+            if self.client.is_none() {
+                self.client = Some(connect_as(&self.paths, self.autostart, ClientKind::Mcp, "lumos-mcp").await?);
+            }
+            let r = self.client.as_ref().expect("connected").call(tool, params.clone()).await;
+            match r {
+                Err(e) if attempt == 0 && mcp::is_connection_lost(e.code) => self.client = None,
+                other => return other,
+            }
+        }
+        unreachable!("the second attempt always returns")
+    }
 }
 
 /// `$LUMOS_DAEMON`, else `lumosd` next to this binary.
@@ -563,6 +791,70 @@ impl Out {
                 }
             }
             "system.shutdown" => println!("Engine stopped."),
+            "library.list" => {
+                let items = v["items"].as_array().cloned().unwrap_or_default();
+                if items.is_empty() {
+                    println!("No recordings yet.");
+                }
+                for r in &items {
+                    let id = r["id"].as_str().unwrap_or_default();
+                    let tags = r["tags"].as_array().map(|t| t.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(",")).unwrap_or_default();
+                    let tags = if tags.is_empty() { String::new() } else { format!("  [{tags}]") };
+                    println!("{id}  {:>6}  {}{tags}", clock(r["durationUs"].as_i64().unwrap_or(0)), r["title"].as_str().unwrap_or_default());
+                }
+                let total = v["total"].as_u64().unwrap_or(0);
+                if total as usize > items.len() {
+                    println!("({} of {total}; use --limit)", items.len());
+                }
+            }
+            "library.update" => println!("{}  {}", v["id"].as_str().unwrap_or_default(), v["outputPath"].as_str().unwrap_or_default()),
+            "library.delete" => println!("Moved {} item(s) to the Trash.", v["trashed"].as_array().map_or(0, Vec::len)),
+            "library.reveal" => println!("{}", v["path"].as_str().unwrap_or_default()),
+            "transcript.get" => print!("{}", v["text"].as_str().unwrap_or_default()),
+            "transcript.create" => match v["path"].as_str() {
+                Some(p) => println!("Transcript saved to {p}"),
+                None => println!("Transcribing in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
+            },
+            "library.recover" => match v["recovered"].as_array() {
+                None => println!("Recovering in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
+                Some(r) => {
+                    for s in r {
+                        println!("Recovered {}", s["outputPath"].as_str().unwrap_or_default());
+                    }
+                    for s in v["skipped"].as_array().into_iter().flatten() {
+                        println!("Skipped {}", s.as_str().unwrap_or_default());
+                    }
+                    if r.is_empty() && v["skipped"].as_array().is_none_or(Vec::is_empty) {
+                        println!("Nothing to recover.");
+                    }
+                }
+            },
+            "export.presets" => {
+                for p in v.as_array().into_iter().flatten() {
+                    println!("{:<12} {}", p["id"].as_str().unwrap_or_default(), p["name"].as_str().unwrap_or_default());
+                }
+            }
+            "export.create" => match v["path"].as_str() {
+                Some(p) => println!("Exported {p}"),
+                None => println!("Exporting in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
+            },
+            "import.formats" => {
+                for f in v.as_array().into_iter().flatten() {
+                    let exts: Vec<&str> = f["extensions"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+                    println!("{:<10} {}  ({})", f["importer"].as_str().unwrap_or_default(), f["description"].as_str().unwrap_or_default(), exts.join(", "));
+                }
+            }
+            "import.create" => match v["recordings"].as_array() {
+                None => println!("Importing in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
+                Some(r) => {
+                    for s in r {
+                        println!("Imported {}  {}", s["id"].as_str().unwrap_or_default(), s["outputPath"].as_str().unwrap_or_default());
+                    }
+                    for s in v["skipped"].as_array().into_iter().flatten() {
+                        println!("Skipped {}", s.as_str().unwrap_or_default());
+                    }
+                }
+            },
             _ => match v {
                 Value::String(s) => println!("{s}"),
                 other => println!("{}", serde_json::to_string_pretty(other).unwrap_or_default()),
@@ -634,17 +926,18 @@ mod tests {
             let mut argv = vec!["lumos".to_string()];
             argv.extend(t.cli.iter().map(|s| s.to_string()));
             argv.extend(placeholders(cmd));
-            if t.name == "recording.cancel" {
+            if t.name == "recording.cancel" || t.name == "library.delete" {
                 argv.push("--yes".into());
             }
             let parsed = Cli::try_parse_from(&argv).unwrap_or_else(|e| panic!("{argv:?}: {e}"));
             let name = match plan(parsed.cmd).unwrap() {
                 Plan::Tool(n, _) => n,
                 Plan::Cancel { .. } => "recording.cancel",
+                Plan::Confirm { tool, .. } => tool,
                 Plan::StopEngine => "system.shutdown",
                 Plan::Events(_) => "events.subscribe",
                 Plan::StartAndWait(_) => "recording.start",
-                Plan::Tools | Plan::Call(..) => panic!("{argv:?} is not a tool command"),
+                Plan::Tools | Plan::Mcp | Plan::Call(..) => panic!("{argv:?} is not a tool command"),
             };
             assert_eq!(name, t.name, "`{}` runs the wrong tool", argv.join(" "));
         }
@@ -666,7 +959,7 @@ mod tests {
         let mut all = Vec::new();
         leaves(&Cli::command(), vec![], &mut all);
         for path in all {
-            if path == ["tools"] || path == ["call"] {
+            if path == ["tools"] || path == ["call"] || path == ["mcp"] {
                 continue;
             }
             let found = lumos_tools::registry().iter().any(|t| t.cli.iter().copied().eq(path.iter().map(String::as_str)));
@@ -684,4 +977,13 @@ mod tests {
         assert_eq!(p["countdownSeconds"], 0);
         assert_eq!(p["maxDurationSeconds"], 5);
     }
+}
+
+/// `0-10` -> {startSeconds: 0, endSeconds: 10}; `5-` -> from 5 s to the end.
+fn parse_range(s: &str) -> Result<Value, String> {
+    let bad = || format!("invalid --range '{s}': use START-END in seconds, e.g. 0-10 or 5-");
+    let (a, b) = s.split_once('-').ok_or_else(bad)?;
+    let start: f64 = if a.trim().is_empty() { 0.0 } else { a.trim().parse().map_err(|_| bad())? };
+    let end: Option<f64> = if b.trim().is_empty() { None } else { Some(b.trim().parse().map_err(|_| bad())?) };
+    Ok(json!({ "startSeconds": start, "endSeconds": end }))
 }
