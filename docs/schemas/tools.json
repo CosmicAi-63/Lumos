@@ -1,0 +1,2999 @@
+[
+  {
+    "cli": [],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_session_hello",
+    "name": "session.hello",
+    "params": {
+      "$defs": {
+        "ClientInfo": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ClientKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ClientKind": {
+          "enum": [
+            "ui",
+            "cli",
+            "mcp"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "client": {
+          "$ref": "#/$defs/ClientInfo"
+        },
+        "protocol": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "client",
+        "protocol"
+      ],
+      "title": "HelloParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "engineVersion": {
+          "type": "string"
+        },
+        "protocol": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "engineVersion",
+        "protocol",
+        "capabilities"
+      ],
+      "title": "HelloResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Identify the client; first call on every connection.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "events",
+      "subscribe"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_events_subscribe",
+    "name": "events.subscribe",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "topics": {
+          "description": "Topic prefixes, e.g. `recorder.` or `job.`. `*` subscribes to everything.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "topics"
+      ],
+      "title": "SubscribeParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "subscribed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "subscribed"
+      ],
+      "title": "SubscribeResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Receive events whose type starts with any of the given prefixes.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "engine",
+      "info"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_system_info",
+    "name": "system.info",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "arch": {
+          "type": "string"
+        },
+        "backend": {
+          "description": "Capture backend in use: `macos`, `fake`, ...",
+          "type": "string"
+        },
+        "engineHost": {
+          "description": "`app` or `lumosd`.",
+          "type": "string"
+        },
+        "home": {
+          "type": "string"
+        },
+        "logsPath": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "settingsPath": {
+          "type": "string"
+        },
+        "socketPath": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "platform",
+        "arch",
+        "engineHost",
+        "backend",
+        "home",
+        "settingsPath",
+        "socketPath",
+        "logsPath"
+      ],
+      "title": "SystemInfo",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Engine version, platform, backend and file locations.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "doctor"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_system_health",
+    "name": "system.health",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "PermissionState": {
+          "oneOf": [
+            {
+              "enum": [
+                "granted",
+                "denied",
+                "notRequested",
+                "restricted"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "unknown",
+              "description": "The backend can't check this permission yet.",
+              "type": "string"
+            }
+          ]
+        },
+        "PermissionStatus": {
+          "properties": {
+            "accessibility": {
+              "$ref": "#/$defs/PermissionState"
+            },
+            "camera": {
+              "$ref": "#/$defs/PermissionState"
+            },
+            "microphone": {
+              "$ref": "#/$defs/PermissionState"
+            },
+            "screen": {
+              "$ref": "#/$defs/PermissionState"
+            }
+          },
+          "required": [
+            "screen",
+            "camera",
+            "microphone",
+            "accessibility"
+          ],
+          "type": "object"
+        },
+        "Problem": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "fix": {
+              "description": "Human hint or the tool to run.",
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "fix"
+          ],
+          "type": "object"
+        },
+        "SaveFolderHealth": {
+          "properties": {
+            "freeMB": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            },
+            "writable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path",
+            "writable"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "ffmpeg": {
+          "description": "`ffmpeg -version` first line, if found.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inProgress": {
+          "description": "Recordings left in `.lumos-inprogress` (crashed, or the one recording now).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "permissions": {
+          "$ref": "#/$defs/PermissionStatus"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/Problem"
+          },
+          "type": "array"
+        },
+        "saveFolder": {
+          "$ref": "#/$defs/SaveFolderHealth"
+        }
+      },
+      "required": [
+        "backend",
+        "permissions",
+        "saveFolder",
+        "inProgress",
+        "problems"
+      ],
+      "title": "Health",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Permissions, save folder, ffmpeg and leftover recordings, with fixes.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "engine",
+      "stop"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_system_shutdown",
+    "name": "system.shutdown",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "states": [
+      "idle",
+      "failed"
+    ],
+    "summary": "Stop the engine. Refused while recording.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "permissions",
+      "status"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_permissions_status",
+    "name": "permissions.status",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "PermissionState": {
+          "oneOf": [
+            {
+              "enum": [
+                "granted",
+                "denied",
+                "notRequested",
+                "restricted"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "unknown",
+              "description": "The backend can't check this permission yet.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "accessibility": {
+          "$ref": "#/$defs/PermissionState"
+        },
+        "camera": {
+          "$ref": "#/$defs/PermissionState"
+        },
+        "microphone": {
+          "$ref": "#/$defs/PermissionState"
+        },
+        "screen": {
+          "$ref": "#/$defs/PermissionState"
+        }
+      },
+      "required": [
+        "screen",
+        "camera",
+        "microphone",
+        "accessibility"
+      ],
+      "title": "PermissionStatus",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Screen, camera, microphone and accessibility permission states.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "sources",
+      "displays"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_sources_displays",
+    "name": "sources.displays",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "Display": {
+          "properties": {
+            "bounds": {
+              "$ref": "#/$defs/Rect"
+            },
+            "id": {
+              "type": "string"
+            },
+            "main": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "refreshHz": {
+              "format": "double",
+              "type": "number"
+            },
+            "scale": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "main",
+            "bounds",
+            "scale",
+            "refreshHz"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/Display"
+      },
+      "title": "Array_of_Display",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Displays that can be recorded.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "sources",
+      "cameras"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_sources_cameras",
+    "name": "sources.cameras",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "Device": {
+          "properties": {
+            "default": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "default"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/Device"
+      },
+      "title": "Array_of_Device",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Cameras.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "sources",
+      "mics"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_sources_microphones",
+    "name": "sources.microphones",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "Device": {
+          "properties": {
+            "default": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "default"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/Device"
+      },
+      "title": "Array_of_Device",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Microphones.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "start"
+    ],
+    "effect": "capture",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_start",
+    "name": "recording.start",
+    "params": {
+      "$defs": {
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "Toggle": {
+          "additionalProperties": false,
+          "properties": {
+            "deviceId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "enabled": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Start a recording. Every field falls back to Settings.",
+      "properties": {
+        "camera": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Toggle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "countdownSeconds": {
+          "description": "0 = no countdown. Agents always get at least 3.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maxDurationSeconds": {
+          "description": "Stop automatically after this many seconds of recorded time.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "mic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Toggle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "saveFolder": {
+          "description": "One-off override of `storage.saveFolder`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaptureSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "systemAudio": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "StartParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActiveSource": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CaptureSource"
+            }
+          },
+          "required": [
+            "source",
+            "name"
+          ],
+          "type": "object"
+        },
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ClientInfo": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ClientKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ClientKind": {
+          "enum": [
+            "ui",
+            "cli",
+            "mcp"
+          ],
+          "type": "string"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "RecorderState": {
+          "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
+          "enum": [
+            "idle",
+            "preparing",
+            "countdown",
+            "recording",
+            "paused",
+            "stopping",
+            "discarding",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "RecorderStats": {
+          "properties": {
+            "bytesWritten": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "droppedFrames": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bytesWritten",
+            "droppedFrames"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "cameraEnabled": {
+          "type": "boolean"
+        },
+        "elapsedUs": {
+          "description": "Recorded time so far, paused time excluded.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "lastError": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "micEnabled": {
+          "type": "boolean"
+        },
+        "pendingFinalize": {
+          "description": "Finalize jobs of earlier recordings that are still being saved.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "segmentIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startedBy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/RecorderState"
+        },
+        "stats": {
+          "$ref": "#/$defs/RecorderStats"
+        },
+        "systemAudio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "elapsedUs",
+        "segmentIndex",
+        "cameraEnabled",
+        "micEnabled",
+        "systemAudio",
+        "stats",
+        "pendingFinalize"
+      ],
+      "title": "RecorderStatus",
+      "type": "object"
+    },
+    "states": [
+      "idle"
+    ],
+    "summary": "Start recording. Returns once the countdown begins.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": true,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "pause"
+    ],
+    "effect": "capture",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_pause",
+    "name": "recording.pause",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActiveSource": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CaptureSource"
+            }
+          },
+          "required": [
+            "source",
+            "name"
+          ],
+          "type": "object"
+        },
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ClientInfo": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ClientKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ClientKind": {
+          "enum": [
+            "ui",
+            "cli",
+            "mcp"
+          ],
+          "type": "string"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "RecorderState": {
+          "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
+          "enum": [
+            "idle",
+            "preparing",
+            "countdown",
+            "recording",
+            "paused",
+            "stopping",
+            "discarding",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "RecorderStats": {
+          "properties": {
+            "bytesWritten": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "droppedFrames": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bytesWritten",
+            "droppedFrames"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "cameraEnabled": {
+          "type": "boolean"
+        },
+        "elapsedUs": {
+          "description": "Recorded time so far, paused time excluded.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "lastError": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "micEnabled": {
+          "type": "boolean"
+        },
+        "pendingFinalize": {
+          "description": "Finalize jobs of earlier recordings that are still being saved.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "segmentIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startedBy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/RecorderState"
+        },
+        "stats": {
+          "$ref": "#/$defs/RecorderStats"
+        },
+        "systemAudio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "elapsedUs",
+        "segmentIndex",
+        "cameraEnabled",
+        "micEnabled",
+        "systemAudio",
+        "stats",
+        "pendingFinalize"
+      ],
+      "title": "RecorderStatus",
+      "type": "object"
+    },
+    "states": [
+      "recording"
+    ],
+    "summary": "Pause; closes the current segment.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "resume"
+    ],
+    "effect": "capture",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_resume",
+    "name": "recording.resume",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActiveSource": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CaptureSource"
+            }
+          },
+          "required": [
+            "source",
+            "name"
+          ],
+          "type": "object"
+        },
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ClientInfo": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ClientKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ClientKind": {
+          "enum": [
+            "ui",
+            "cli",
+            "mcp"
+          ],
+          "type": "string"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "RecorderState": {
+          "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
+          "enum": [
+            "idle",
+            "preparing",
+            "countdown",
+            "recording",
+            "paused",
+            "stopping",
+            "discarding",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "RecorderStats": {
+          "properties": {
+            "bytesWritten": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "droppedFrames": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bytesWritten",
+            "droppedFrames"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "cameraEnabled": {
+          "type": "boolean"
+        },
+        "elapsedUs": {
+          "description": "Recorded time so far, paused time excluded.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "lastError": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "micEnabled": {
+          "type": "boolean"
+        },
+        "pendingFinalize": {
+          "description": "Finalize jobs of earlier recordings that are still being saved.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "segmentIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startedBy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/RecorderState"
+        },
+        "stats": {
+          "$ref": "#/$defs/RecorderStats"
+        },
+        "systemAudio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "elapsedUs",
+        "segmentIndex",
+        "cameraEnabled",
+        "micEnabled",
+        "systemAudio",
+        "stats",
+        "pendingFinalize"
+      ],
+      "title": "RecorderStatus",
+      "type": "object"
+    },
+    "states": [
+      "paused"
+    ],
+    "summary": "Resume into a new segment.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": true,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "stop"
+    ],
+    "effect": "capture",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_stop",
+    "name": "recording.stop",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "timeoutMs": {
+          "description": "Default 55000.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "description": "Block until the file is saved.",
+          "type": "boolean"
+        }
+      },
+      "title": "StopParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "bundlePath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finalizeJobId": {
+          "type": "string"
+        },
+        "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recordingId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordingId",
+        "finalizeJobId"
+      ],
+      "title": "StopResult",
+      "type": "object"
+    },
+    "states": [
+      "recording",
+      "paused"
+    ],
+    "summary": "Stop and save to the save folder. `wait` blocks until the file exists.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "cancel"
+    ],
+    "effect": "destructive",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_cancel",
+    "name": "recording.cancel",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Must be `true`; destructive.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "confirm"
+      ],
+      "title": "ConfirmParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "discarded": {
+          "type": "boolean"
+        },
+        "recordingId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordingId",
+        "discarded"
+      ],
+      "title": "CancelResult",
+      "type": "object"
+    },
+    "states": [
+      "preparing",
+      "countdown",
+      "recording",
+      "paused"
+    ],
+    "summary": "Stop and discard the recording (moved to the Trash).",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "status"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_recording_status",
+    "name": "recording.status",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActiveSource": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CaptureSource"
+            }
+          },
+          "required": [
+            "source",
+            "name"
+          ],
+          "type": "object"
+        },
+        "CaptureSource": {
+          "description": "What to record. `displayId: \"main\"` means the main display.",
+          "oneOf": [
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "app": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "window",
+                  "type": "string"
+                },
+                "titleContains": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "windowId": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "displayId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "area",
+                  "type": "string"
+                },
+                "rect": {
+                  "$ref": "#/$defs/Rect"
+                }
+              },
+              "required": [
+                "kind",
+                "displayId",
+                "rect"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ClientInfo": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/ClientKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ClientKind": {
+          "enum": [
+            "ui",
+            "cli",
+            "mcp"
+          ],
+          "type": "string"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "RecorderState": {
+          "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
+          "enum": [
+            "idle",
+            "preparing",
+            "countdown",
+            "recording",
+            "paused",
+            "stopping",
+            "discarding",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "RecorderStats": {
+          "properties": {
+            "bytesWritten": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "droppedFrames": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bytesWritten",
+            "droppedFrames"
+          ],
+          "type": "object"
+        },
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "cameraEnabled": {
+          "type": "boolean"
+        },
+        "elapsedUs": {
+          "description": "Recorded time so far, paused time excluded.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "lastError": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "micEnabled": {
+          "type": "boolean"
+        },
+        "pendingFinalize": {
+          "description": "Finalize jobs of earlier recordings that are still being saved.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "segmentIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startedBy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/RecorderState"
+        },
+        "stats": {
+          "$ref": "#/$defs/RecorderStats"
+        },
+        "systemAudio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "elapsedUs",
+        "segmentIndex",
+        "cameraEnabled",
+        "micEnabled",
+        "systemAudio",
+        "stats",
+        "pendingFinalize"
+      ],
+      "title": "RecorderStatus",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Current recorder state.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "record",
+      "mark"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_recording_mark",
+    "name": "recording.mark",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "MarkParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "atUs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "markerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "markerId",
+        "atUs"
+      ],
+      "title": "MarkResult",
+      "type": "object"
+    },
+    "states": [
+      "recording",
+      "paused"
+    ],
+    "summary": "Add a marker at the current time.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "settings",
+      "get"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_settings_get",
+    "name": "settings.get",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Dotted path, e.g. `storage.saveFolder`. Omit for everything.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "SettingsGetParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnyValue"
+    },
+    "states": null,
+    "summary": "Read all settings or one dotted path.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "settings",
+      "set"
+    ],
+    "effect": "mutating",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_settings_set",
+    "name": "settings.set",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "patch": {
+          "additionalProperties": true,
+          "description": "Dotted paths to new values: `{ \"storage.saveFolder\": \"~/Videos/Lumos\" }`.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "patch"
+      ],
+      "title": "SettingsSetParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "changed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "settings": true
+      },
+      "required": [
+        "changed",
+        "settings"
+      ],
+      "title": "SettingsChanged",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Change settings by dotted path. Validated before saving.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "settings",
+      "reset"
+    ],
+    "effect": "mutating",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_settings_reset",
+    "name": "settings.reset",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "SettingsResetParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "changed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "settings": true
+      },
+      "required": [
+        "changed",
+        "settings"
+      ],
+      "title": "SettingsChanged",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Reset all settings, or one dotted path, to defaults.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "settings",
+      "schema"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_settings_schema",
+    "name": "settings.schema",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnyValue"
+    },
+    "states": null,
+    "summary": "JSON Schema of settings.json.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "jobs",
+      "ls"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_jobs_list",
+    "name": "jobs.list",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "title": "JobListParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "Job": {
+          "properties": {
+            "createdAt": {
+              "type": "string"
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ToolError"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finishedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/JobKind"
+            },
+            "progress": {
+              "description": "0.0–1.0",
+              "format": "double",
+              "type": "number"
+            },
+            "recordingId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "result": true,
+            "startedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/$defs/JobStatus"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "status",
+            "progress",
+            "createdAt"
+          ],
+          "type": "object"
+        },
+        "JobKind": {
+          "enum": [
+            "finalize",
+            "export",
+            "import",
+            "thumbnail",
+            "transcribe",
+            "reindex",
+            "recover"
+          ],
+          "type": "string"
+        },
+        "JobStatus": {
+          "enum": [
+            "queued",
+            "running",
+            "done",
+            "failed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/Job"
+      },
+      "title": "Array_of_Job",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Recent jobs, newest first.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "jobs",
+      "show"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_jobs_get",
+    "name": "jobs.get",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "jobId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "JobIdParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "JobKind": {
+          "enum": [
+            "finalize",
+            "export",
+            "import",
+            "thumbnail",
+            "transcribe",
+            "reindex",
+            "recover"
+          ],
+          "type": "string"
+        },
+        "JobStatus": {
+          "enum": [
+            "queued",
+            "running",
+            "done",
+            "failed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/JobKind"
+        },
+        "progress": {
+          "description": "0.0–1.0",
+          "format": "double",
+          "type": "number"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": true,
+        "startedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "progress",
+        "createdAt"
+      ],
+      "title": "Job",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "One job.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "jobs",
+      "wait"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_jobs_wait",
+    "name": "jobs.wait",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "timeoutMs": {
+          "description": "Default 55000. On timeout the job keeps running.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId"
+      ],
+      "title": "JobWaitParams",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ErrorCode": {
+          "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
+          "enum": [
+            "INVALID_PARAMS",
+            "INVALID_STATE",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "POLICY_DENIED",
+            "ENGINE_UNAVAILABLE",
+            "DEVICE_BUSY",
+            "DISK_LOW",
+            "BACKEND_ERROR",
+            "CANCELLED",
+            "METHOD_NOT_FOUND",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "JobKind": {
+          "enum": [
+            "finalize",
+            "export",
+            "import",
+            "thumbnail",
+            "transcribe",
+            "reindex",
+            "recover"
+          ],
+          "type": "string"
+        },
+        "JobStatus": {
+          "enum": [
+            "queued",
+            "running",
+            "done",
+            "failed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "ToolError": {
+          "description": "Error returned by every tool.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "data": true,
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/JobKind"
+        },
+        "progress": {
+          "description": "0.0–1.0",
+          "format": "double",
+          "type": "number"
+        },
+        "recordingId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": true,
+        "startedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "progress",
+        "createdAt"
+      ],
+      "title": "Job",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Wait for a job to finish (default 55 s). On timeout the job keeps running.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  }
+]

@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/lumos-model",
+    "crates/lumos-tools",
+    "crates/lumos-rpc",
+    "crates/lumos-capture",
+    "crates/lumos-media",
+    "crates/lumos-core",
+    "crates/lumosd",
+    "crates/lumos-cli",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false

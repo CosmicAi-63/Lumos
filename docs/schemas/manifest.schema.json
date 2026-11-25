@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Manifest",
+  "type": "object",
+  "properties": {
+    "app": {
+      "$ref": "#/$defs/AppInfo"
+    },
+    "capture": {
+      "$ref": "#/$defs/CaptureInfo"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "durationUs": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "edits": {
+      "$ref": "#/$defs/Edits",
+      "default": {}
+    },
+    "id": {
+      "type": "string"
+    },
+    "markers": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Marker"
+      }
+    },
+    "origin": {
+      "$ref": "#/$defs/Origin"
+    },
+    "outputs": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/OutputFile"
+      }
+    },
+    "schema": {
+      "type": "string"
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Segment"
+      }
+    },
+    "status": {
+      "$ref": "#/$defs/RecordingStatus"
+    },
+    "tags": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "title": {
+      "type": "string"
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Track"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Warning"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "createdAt",
+    "status",
+    "durationUs",
+    "origin",
+    "app",
+    "capture",
+    "segments",
+    "tracks"
+  ],
+  "$defs": {
+    "AppInfo": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "platform"
+      ]
+    },
+    "CaptureInfo": {
+      "type": "object",
+      "properties": {
+        "cameraBurnedIn": {
+          "type": "boolean"
+        },
+        "fps": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "showCursor": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/CaptureSource"
+        },
+        "sourceName": {
+          "description": "Human name of the resolved source, e.g. \"Built-in Retina Display\".",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "sourceName",
+        "fps",
+        "showCursor",
+        "cameraBurnedIn"
+      ]
+    },
+    "CaptureSource": {
+      "description": "What to record. `displayId: \"main\"` means the main display.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "display"
+            }
+          },
+          "required": [
+            "kind",
+            "displayId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "app": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "window"
+            },
+            "titleContains": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "windowId": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "area"
+            },
+            "rect": {
+              "$ref": "#/$defs/Rect"
+            }
+          },
+          "required": [
+            "kind",
+            "displayId",
+            "rect"
+          ]
+        }
+      ]
+    },
+    "Edits": {
+      "type": "object",
+      "properties": {
+        "cuts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Range"
+          }
+        },
+        "trim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Range"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Marker": {
+      "type": "object",
+      "properties": {
+        "atUs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "atUs"
+      ]
+    },
+    "Origin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "recorded"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "importer": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "imported"
+            }
+          },
+          "required": [
+            "kind",
+            "from",
+            "importer"
+          ]
+        }
+      ]
+    },
+    "OutputFile": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "path": {
+          "description": "Relative to the bundle, e.g. `../Demo.mp4`.",
+          "type": "string"
+        },
+        "preset": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "preset",
+        "path",
+        "createdAt",
+        "bytes"
+      ]
+    },
+    "Range": {
+      "type": "object",
+      "properties": {
+        "endUs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "startUs": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "startUs",
+        "endUs"
+      ]
+    },
+    "RecordingStatus": {
+      "type": "string",
+      "enum": [
+        "recording",
+        "paused",
+        "finalizing",
+        "ready",
+        "failed",
+        "recovered"
+      ]
+    },
+    "Rect": {
+      "type": "object",
+      "properties": {
+        "h": {
+          "type": "number",
+          "format": "double"
+        },
+        "w": {
+          "type": "number",
+          "format": "double"
+        },
+        "x": {
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ]
+    },
+    "Segment": {
+      "type": "object",
+      "properties": {
+        "endUs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "startUs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "wallStart": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "startUs",
+        "endUs",
+        "wallStart"
+      ]
+    },
+    "Track": {
+      "type": "object",
+      "properties": {
+        "codec": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "description": "Segment files, relative to the bundle.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/TrackKind"
+        },
+        "offsetUs": {
+          "type": "integer",
+          "format": "int64",
+          "default": 0
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "codec",
+        "files"
+      ]
+    },
+    "TrackKind": {
+      "type": "string",
+      "enum": [
+        "screen",
+        "camera",
+        "mic",
+        "systemAudio"
+      ]
+    },
+    "Warning": {
+      "type": "object",
+      "properties": {
+        "atUs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "atUs",
+        "code",
+        "message"
+      ]
+    }
+  }
+}

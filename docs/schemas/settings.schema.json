@@ -1,0 +1,625 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Settings",
+  "type": "object",
+  "properties": {
+    "advanced": {
+      "$ref": "#/$defs/Advanced",
+      "default": {
+        "cameraBitrateKbps": null,
+        "encoder": "hardware",
+        "logLevel": "info",
+        "screenBitrateKbps": null
+      }
+    },
+    "audio": {
+      "$ref": "#/$defs/Audio",
+      "default": {
+        "micDeviceId": null,
+        "micEnabled": true,
+        "micGainDb": 0.0,
+        "systemAudio": false,
+        "systemGainDb": -6.0
+      }
+    },
+    "automation": {
+      "$ref": "#/$defs/Automation",
+      "default": {
+        "agentMayDelete": false,
+        "agentMaySnapshotScreen": false,
+        "agentMayStartRecording": false,
+        "cliIsTrusted": true
+      }
+    },
+    "camera": {
+      "$ref": "#/$defs/Camera",
+      "default": {
+        "burnIn": true,
+        "deviceId": null,
+        "enabled": true,
+        "mirror": true,
+        "position": {
+          "anchor": "bottomLeft",
+          "x": 0.04,
+          "y": 0.78
+        },
+        "resolution": "720p",
+        "shape": "circle",
+        "size": "m"
+      }
+    },
+    "capture": {
+      "$ref": "#/$defs/Capture",
+      "default": {
+        "defaultSource": {
+          "displayId": "main",
+          "kind": "display"
+        },
+        "fps": 30,
+        "highlightClicks": false,
+        "maxResolution": "native",
+        "showCursor": true
+      }
+    },
+    "jobs": {
+      "$ref": "#/$defs/Jobs",
+      "default": {
+        "maxConcurrent": 1
+      }
+    },
+    "output": {
+      "$ref": "#/$defs/Output",
+      "default": {
+        "afterStop": "notify",
+        "autoExport": true,
+        "preset": "default"
+      }
+    },
+    "recording": {
+      "$ref": "#/$defs/Recording",
+      "default": {
+        "countdownSeconds": 3,
+        "maxDurationMinutes": null,
+        "minFreeDiskMB": 2048
+      }
+    },
+    "schema": {
+      "type": "string",
+      "default": "lumos.settings/1"
+    },
+    "shortcuts": {
+      "$ref": "#/$defs/Shortcuts",
+      "default": {
+        "addMarker": "CmdOrCtrl+Shift+M",
+        "cancel": "CmdOrCtrl+Shift+Backspace",
+        "pauseResume": "CmdOrCtrl+Shift+P",
+        "startStop": "CmdOrCtrl+Shift+L",
+        "toggleCamera": "CmdOrCtrl+Shift+C"
+      }
+    },
+    "storage": {
+      "$ref": "#/$defs/Storage",
+      "default": {
+        "defaultTitle": "Recording",
+        "fileNameTemplate": "{title} — {date:%Y-%m-%d %H.%M}",
+        "keepSourceTracks": "always",
+        "saveFolder": "~/Movies/Lumos",
+        "subfolders": "none"
+      }
+    },
+    "ui": {
+      "$ref": "#/$defs/Ui",
+      "default": {
+        "launchAtLogin": false,
+        "theme": "system",
+        "toolbarCollapsed": false,
+        "toolbarPosition": {
+          "anchor": "bottomCenter",
+          "dx": 0.0,
+          "dy": -24.0
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Advanced": {
+      "type": "object",
+      "properties": {
+        "cameraBitrateKbps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "default": null,
+          "minimum": 0
+        },
+        "encoder": {
+          "description": "`hardware` or `software`.",
+          "type": "string",
+          "default": "hardware"
+        },
+        "logLevel": {
+          "type": "string",
+          "default": "info"
+        },
+        "screenBitrateKbps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "default": null,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "AfterStop": {
+      "type": "string",
+      "enum": [
+        "notify",
+        "reveal",
+        "openLibrary",
+        "nothing"
+      ]
+    },
+    "Anchor": {
+      "type": "string",
+      "enum": [
+        "topLeft",
+        "topRight",
+        "bottomLeft",
+        "bottomRight",
+        "bottomCenter",
+        "free"
+      ]
+    },
+    "Audio": {
+      "type": "object",
+      "properties": {
+        "micDeviceId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "micEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "micGainDb": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "systemAudio": {
+          "type": "boolean",
+          "default": false
+        },
+        "systemGainDb": {
+          "type": "number",
+          "format": "double",
+          "default": -6.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Automation": {
+      "description": "What agents may do. Only the desktop UI can change these.",
+      "type": "object",
+      "properties": {
+        "agentMayDelete": {
+          "type": "boolean",
+          "default": false
+        },
+        "agentMaySnapshotScreen": {
+          "type": "boolean",
+          "default": false
+        },
+        "agentMayStartRecording": {
+          "type": "boolean",
+          "default": false
+        },
+        "cliIsTrusted": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Camera": {
+      "type": "object",
+      "properties": {
+        "burnIn": {
+          "description": "Bubble is captured with the screen. Forced off for window sources.",
+          "type": "boolean",
+          "default": true
+        },
+        "deviceId": {
+          "description": "`null` = system default camera.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "mirror": {
+          "type": "boolean",
+          "default": true
+        },
+        "position": {
+          "$ref": "#/$defs/Placement",
+          "default": {
+            "anchor": "bottomLeft",
+            "x": 0.04,
+            "y": 0.78
+          }
+        },
+        "resolution": {
+          "description": "`720p` or `1080p`.",
+          "type": "string",
+          "default": "720p"
+        },
+        "shape": {
+          "$ref": "#/$defs/CameraShape",
+          "default": "circle"
+        },
+        "size": {
+          "$ref": "#/$defs/CameraSize",
+          "default": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CameraShape": {
+      "type": "string",
+      "enum": [
+        "circle",
+        "roundedRect",
+        "rect"
+      ]
+    },
+    "CameraSize": {
+      "type": "string",
+      "enum": [
+        "s",
+        "m",
+        "l"
+      ]
+    },
+    "Capture": {
+      "type": "object",
+      "properties": {
+        "defaultSource": {
+          "$ref": "#/$defs/CaptureSource",
+          "default": {
+            "displayId": "main",
+            "kind": "display"
+          }
+        },
+        "fps": {
+          "description": "24, 30 or 60.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 30,
+          "minimum": 0
+        },
+        "highlightClicks": {
+          "type": "boolean",
+          "default": false
+        },
+        "maxResolution": {
+          "description": "`native`, `1080p`, `1440p` or `4k`.",
+          "type": "string",
+          "default": "native"
+        },
+        "showCursor": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureSource": {
+      "description": "What to record. `displayId: \"main\"` means the main display.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "display"
+            }
+          },
+          "required": [
+            "kind",
+            "displayId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "app": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "window"
+            },
+            "titleContains": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "windowId": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "area"
+            },
+            "rect": {
+              "$ref": "#/$defs/Rect"
+            }
+          },
+          "required": [
+            "kind",
+            "displayId",
+            "rect"
+          ]
+        }
+      ]
+    },
+    "Jobs": {
+      "type": "object",
+      "properties": {
+        "maxConcurrent": {
+          "description": "Heavy jobs (export, import, transcribe) at once. Paused while recording.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 1,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Output": {
+      "type": "object",
+      "properties": {
+        "afterStop": {
+          "$ref": "#/$defs/AfterStop",
+          "default": "notify"
+        },
+        "autoExport": {
+          "type": "boolean",
+          "default": true
+        },
+        "preset": {
+          "type": "string",
+          "default": "default"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Placement": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "x": {
+          "description": "0.0–1.0 of the frame.",
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "anchor",
+        "x",
+        "y"
+      ]
+    },
+    "Recording": {
+      "type": "object",
+      "properties": {
+        "countdownSeconds": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 3,
+          "minimum": 0
+        },
+        "maxDurationMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "default": null,
+          "minimum": 0
+        },
+        "minFreeDiskMB": {
+          "description": "Refuse to start (and auto-stop) below this much free space.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 2048,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rect": {
+      "type": "object",
+      "properties": {
+        "h": {
+          "type": "number",
+          "format": "double"
+        },
+        "w": {
+          "type": "number",
+          "format": "double"
+        },
+        "x": {
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ]
+    },
+    "Shortcuts": {
+      "type": "object",
+      "properties": {
+        "addMarker": {
+          "type": "string",
+          "default": "CmdOrCtrl+Shift+M"
+        },
+        "cancel": {
+          "type": "string",
+          "default": "CmdOrCtrl+Shift+Backspace"
+        },
+        "pauseResume": {
+          "type": "string",
+          "default": "CmdOrCtrl+Shift+P"
+        },
+        "startStop": {
+          "type": "string",
+          "default": "CmdOrCtrl+Shift+L"
+        },
+        "toggleCamera": {
+          "type": "string",
+          "default": "CmdOrCtrl+Shift+C"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Storage": {
+      "description": "Where recordings are saved and how they are named.",
+      "type": "object",
+      "properties": {
+        "defaultTitle": {
+          "type": "string",
+          "default": "Recording"
+        },
+        "fileNameTemplate": {
+          "description": "Placeholders: `{title}`, `{date:<strftime>}`.",
+          "type": "string",
+          "default": "{title} — {date:%Y-%m-%d %H.%M}"
+        },
+        "keepSourceTracks": {
+          "description": "`always`, `never`, or `days:N`.",
+          "type": "string",
+          "default": "always"
+        },
+        "saveFolder": {
+          "description": "Folder new recordings are saved to. `~` expands to the home folder.",
+          "type": "string",
+          "default": "~/Movies/Lumos"
+        },
+        "subfolders": {
+          "$ref": "#/$defs/Subfolders",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Subfolders": {
+      "type": "string",
+      "enum": [
+        "none",
+        "yearMonth"
+      ]
+    },
+    "ToolbarPosition": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "dx": {
+          "type": "number",
+          "format": "double"
+        },
+        "dy": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "anchor",
+        "dx",
+        "dy"
+      ]
+    },
+    "Ui": {
+      "type": "object",
+      "properties": {
+        "launchAtLogin": {
+          "type": "boolean",
+          "default": false
+        },
+        "theme": {
+          "description": "`system`, `light` or `dark`.",
+          "type": "string",
+          "default": "system"
+        },
+        "toolbarCollapsed": {
+          "type": "boolean",
+          "default": false
+        },
+        "toolbarPosition": {
+          "$ref": "#/$defs/ToolbarPosition",
+          "default": {
+            "anchor": "bottomCenter",
+            "dx": 0.0,
+            "dy": -24.0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
