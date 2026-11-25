@@ -386,6 +386,7 @@ dependencies = [
  "libc",
  "lumos-media",
  "lumos-model",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
