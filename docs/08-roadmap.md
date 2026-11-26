@@ -113,7 +113,7 @@ Drawing on screen while recording, zoom to cursor, a teleprompter, noise suppres
 
 | # | Decision | Recommendation | Why it matters |
 |---|---|---|---|
-| 1 | **License** | Apache-2.0 (permissive, with a patent grant). Choose AGPL-3.0 instead if stopping closed SaaS forks matters more than adoption. | Hard to change after outside contributions arrive |
+| 1 | **License** | **Decided: Apache-2.0** (permissive, with a patent grant). | Hard to change after outside contributions arrive |
 | 2 | **Name** | "Lumos" works as a codename. Check trademark, domain, crates.io, Homebrew and npm availability before the first public release. | Renaming later touches the bundle ID, socket paths and the `lumos://` URIs |
 | 3 | **Stack** | Rust engine + Tauri UI + native macOS windows for the bubble and overlay | Decides who can contribute and how capture code is written |
 | 4 | **Platform order** | macOS → Windows → Linux | macOS has the best capture API and is where the project starts |
