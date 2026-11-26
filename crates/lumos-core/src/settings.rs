@@ -94,6 +94,9 @@ fn validate(s: &Settings) -> ToolResult<()> {
     if ![24, 30, 60].contains(&s.capture.fps) {
         return Err(ToolError::invalid_params("capture.fps must be 24, 30 or 60"));
     }
+    if !["native", "1080p", "1440p", "4k"].contains(&s.capture.max_resolution.as_str()) {
+        return Err(ToolError::invalid_params("capture.maxResolution must be native, 1080p, 1440p or 4k"));
+    }
     if s.recording.countdown_seconds > 10 {
         return Err(ToolError::invalid_params("recording.countdownSeconds must be 0–10"));
     }

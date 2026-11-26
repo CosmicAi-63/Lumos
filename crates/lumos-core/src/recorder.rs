@@ -206,6 +206,9 @@ impl Inner {
         let config = SessionConfig {
             source: source.clone(),
             fps: s.capture.fps,
+            max_short_side: s.capture.max_short_side(),
+            screen_bitrate_kbps: s.advanced.screen_bitrate_kbps,
+            camera_bitrate_kbps: s.advanced.camera_bitrate_kbps,
             camera: camera_enabled.then(|| camera.device_id.clone().or(s.camera.device_id.clone())),
             mic: mic_enabled.then(|| mic.device_id.clone().or(s.audio.mic_device_id.clone())),
             system_audio,

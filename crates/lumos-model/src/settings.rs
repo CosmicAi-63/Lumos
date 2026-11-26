@@ -63,7 +63,7 @@ impl Default for Storage {
             save_folder: "~/Movies/Lumos".into(),
             file_name_template: "{title} — {date:%Y-%m-%d %H.%M}".into(),
             default_title: "Recording".into(),
-            keep_source_tracks: "always".into(),
+            keep_source_tracks: "never".into(),
             subfolders: Subfolders::None,
         }
     }
@@ -86,6 +86,18 @@ pub struct Capture {
     pub max_resolution: String,
     pub show_cursor: bool,
     pub highlight_clicks: bool,
+}
+
+impl Capture {
+    /// The `max_resolution` limit as a short-side pixel count; `None` for `native` (or anything unknown).
+    pub fn max_short_side(&self) -> Option<u32> {
+        match self.max_resolution.as_str() {
+            "1080p" => Some(1080),
+            "1440p" => Some(1440),
+            "4k" => Some(2160),
+            _ => None,
+        }
+    }
 }
 
 impl Default for Capture {

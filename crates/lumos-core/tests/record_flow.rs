@@ -61,6 +61,8 @@ async fn record_pause_resume_stop_saves_an_mp4() {
     let h = harness().await;
     let c = connect(&h, "cli").await;
     set_save_folder(&c, &h.save).await;
+    // This test checks the source track layout, which only the "always" setting keeps.
+    c.call("settings.set", json!({ "patch": { "storage.keepSourceTracks": "always" } })).await.unwrap();
 
     c.call("events.subscribe", json!({ "topics": ["recorder.", "recording."] })).await.unwrap();
     let mut events = c.take_events().unwrap();
@@ -138,6 +140,36 @@ async fn record_pause_resume_stop_saves_an_mp4() {
     assert_eq!(states, ["preparing", "recording", "paused", "recording", "stopping", "idle"]);
     assert!(seen.iter().any(|(k, _)| k == "recording.ready"));
 
+    h.server.abort();
+}
+
+/// By default only the MP4 keeps the video: the source tracks are dropped, and the small bundle
+/// left behind keeps the recording in the library with its screen track pointing at the MP4.
+#[tokio::test]
+async fn mp4_only_drops_source_tracks_but_stays_in_the_library() {
+    let h = harness().await;
+    let c = connect(&h, "cli").await;
+    set_save_folder(&c, &h.save).await;
+    assert_eq!(c.call("settings.get", json!({ "path": "storage.keepSourceTracks" })).await.unwrap(), "never");
+
+    let st = c.call("recording.start", json!({ "countdownSeconds": 0, "title": "Slim", "camera": { "enabled": true } })).await.unwrap();
+    let id = st["recordingId"].as_str().unwrap().to_string();
+    sleep(Duration::from_millis(1100)).await;
+    let stop = c.call("recording.stop", json!({ "wait": true, "timeoutMs": 30000 })).await.unwrap();
+    let output = PathBuf::from(stop["outputPath"].as_str().unwrap());
+    let bundle = PathBuf::from(stop["bundlePath"].as_str().unwrap());
+
+    assert!(output.is_file());
+    assert!(!bundle.join("tracks").exists(), "source tracks should be gone");
+    assert!(bundle.join("thumb.jpg").is_file());
+    let manifest: Manifest = serde_json::from_slice(&std::fs::read(bundle.join("manifest.json")).unwrap()).unwrap();
+    let kinds: Vec<_> = manifest.tracks.iter().map(|t| t.kind).collect();
+    assert_eq!(kinds, [lumos_model::manifest::TrackKind::Screen]);
+    let stem = output.file_stem().unwrap().to_string_lossy();
+    assert_eq!(manifest.tracks[0].files, [format!("../{stem}.mp4")]);
+
+    let got = c.call("library.get", json!({ "id": id })).await.unwrap();
+    assert_eq!(got["summary"]["outputPath"], output.display().to_string());
     h.server.abort();
 }
 

@@ -188,6 +188,8 @@ async fn recover_saves_what_a_crash_left_behind() {
     let c = connect(&h).await;
 
     // Simulate a crash: a recording that stopped after one segment closed, never finalized.
+    // Its in-progress bundle still holds the source tracks, so keep them for this setup.
+    c.call("settings.set", json!({ "patch": { "storage.keepSourceTracks": "always" } })).await.unwrap();
     let id = record(&c, "Crashed").await;
     let rec = c.call("library.get", json!({ "id": id })).await.unwrap();
     let bundle = PathBuf::from(rec["summary"]["bundlePath"].as_str().unwrap());
