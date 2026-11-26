@@ -17,6 +17,7 @@ use lumos_rpc::Dispatch;
 use lumos_rpc::paths::Paths;
 use serde_json::Value;
 use tauri::image::Image;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{ActivationPolicy, AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, PhysicalPosition, RunEvent, State};
 use tokio::sync::broadcast::error::RecvError;
@@ -52,6 +53,18 @@ fn toggle_menu(app: &AppHandle, icon: tauri::Rect) {
     MENU_SHOWN_AT.store(now_ms(), Ordering::SeqCst);
     let _ = w.show();
     let _ = w.set_focus();
+}
+
+/// Show the library window on one of its tabs ("library" or "settings").
+fn open_main_tab(app: &AppHandle, tab: &str) {
+    if let Some(menu) = app.get_webview_window("menu") {
+        let _ = menu.hide();
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    let _ = app.emit("show-tab", tab);
 }
 
 /// How long quitting waits for recordings that are still being saved.
@@ -332,10 +345,36 @@ fn main() {
             // Lumos lives in the menu bar: no Dock icon, no Dock bounce.
             app.set_activation_policy(ActivationPolicy::Accessory);
             let icon = Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+            // Right-click opens a short native menu; left-click keeps the popover.
+            let tray_menu = Menu::with_items(
+                app,
+                &[
+                    &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
+                    &MenuItem::with_id(app, "library", "Library", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "quit", "Quit Lumos", true, Some("CmdOrCtrl+Q"))?,
+                ],
+            )?;
             TrayIconBuilder::with_id("lumos")
                 .icon(icon)
                 .icon_as_template(true)
                 .tooltip("Lumos")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "settings" => open_main_tab(app, "settings"),
+                    "library" => open_main_tab(app, "library"),
+                    "quit" => {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let state = app.state::<Arc<App>>().inner().clone();
+                            state.quitting.store(true, Ordering::SeqCst);
+                            state.shutdown().await;
+                            app.exit(0);
+                        });
+                    }
+                    _ => {}
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } = event {
                         toggle_menu(tray.app_handle(), rect);
