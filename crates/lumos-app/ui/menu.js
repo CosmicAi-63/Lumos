@@ -168,6 +168,8 @@
         if (s && s.kind === 'display') params.source = { kind: 'display', displayId: s.displayId };
         else if (s && s.kind === 'window') params.source = { kind: 'window', windowId: s.windowId };
         else if (s && s.kind === 'area') params.source = { kind: 'area', displayId: 'main', rect: s.rect };
+        // The toolbar's restart button starts again with these.
+        localStorage.setItem('lastStart', JSON.stringify(params));
         await lumos.invoke('hide_window', { label: 'menu' });
         rec = await lumos.call('recording.start', params);
       } catch (e) {

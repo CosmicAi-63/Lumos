@@ -8,16 +8,27 @@
   let st = { state: 'idle', elapsedUs: 0, pendingFinalize: [] };
   let saved = null;          // { id, name, path } after a recording is saved
   let note = null;           // { text, err } transient message
-  let confirmingDiscard = false;
+  let confirming = null;     // 'discard' | 'restart' while asking to confirm
   let drawing = false;       // the drawing overlay is open
   let countdownEnd = 0;
   let timers = {};
   let shown = { toolbar: null, bubble: null };
 
-  const grip = '<span class="grip" data-tauri-drag-region aria-hidden="true">⋮⋮</span>';
   const btn = (act, label, cls = '', extra = '') => `<button class="tb ${cls}" data-act="${act}" ${extra}>${label}</button>`;
-  const sep = '<span class="sep"></span>';
-  const brush = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 14c1.6 0 3-.6 3.4-2.2.3-1-.4-2-1.4-2S2.3 10.6 2.3 12c0 .9-.1 1.5-.3 2z"/><path d="M5.6 9.4 13 2a1.4 1.4 0 0 1 2 2l-7.4 7.4"/></svg>';
+  const ibtn = (act, svg, label, cls = '') => btn(act, svg, cls, `aria-label="${label}" title="${label}"`);
+  const sep = '<span class="sep" data-tauri-drag-region></span>';
+  const svg = (body, fill = false) => `<svg width="20" height="20" viewBox="0 0 20 20" fill="${fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  const icon = {
+    stop: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3.5" fill="currentColor"/></svg>',
+    pause: svg('<rect x="5" y="3.5" width="3" height="13" rx="1.2" stroke="none"/><rect x="12" y="3.5" width="3" height="13" rx="1.2" stroke="none"/>', true),
+    play: svg('<path d="M6.5 4.2v11.6a.8.8 0 0 0 1.2.7l9-5.8a.8.8 0 0 0 0-1.4l-9-5.8a.8.8 0 0 0-1.2.7z" stroke="none"/>', true),
+    restart: svg('<path d="M3.8 9.5a6.4 6.4 0 1 0 2-4.6"/><path d="M5.6 2.2v3.2h3.2"/>'),
+    trash: svg('<path d="M3.5 5.5h13"/><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5"/><path d="M5 5.5l.8 10.3a1.5 1.5 0 0 0 1.5 1.4h5.4a1.5 1.5 0 0 0 1.5-1.4L15 5.5"/><path d="M8.5 8.8v5M11.5 8.8v5"/>'),
+    pen: svg('<path d="M11.8 3.6l2.6 2.6"/><path d="M4 14.4l.6-3.2L12.9 3a1.3 1.3 0 0 1 1.8 0l.8.8a1.3 1.3 0 0 1 0 1.8L7.2 13.8z"/><path d="M11 16.8h6"/>'),
+    x: svg('<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>'),
+    folder: svg('<path d="M2.8 6V14.5a1.5 1.5 0 0 0 1.5 1.5h11.4a1.5 1.5 0 0 0 1.5-1.5V8a1.5 1.5 0 0 0-1.5-1.5H10L8.4 4.5H4.3A1.5 1.5 0 0 0 2.8 6z"/>'),
+    library: svg('<rect x="3" y="3" width="6" height="6" rx="1.3"/><rect x="11" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="11" width="6" height="6" rx="1.3"/><rect x="11" y="11" width="6" height="6" rx="1.3"/>'),
+  };
   const camOn = () => { try { return JSON.parse(localStorage.getItem('camOn') ?? 'true'); } catch (_) { return true; } };
 
   function flash(text, err, ms = 6000) {
@@ -43,35 +54,37 @@
     const s = st.state;
     const saving = (st.pendingFinalize || []).length > 0;
     const idle = s === 'idle' || s === 'failed';
-    let html = grip;
+    let html = '';
+    const msg = () => note ? `<span class="status ${note.err ? 'err' : ''}" data-tauri-drag-region>${lumos.esc(note.text)}</span>` : '';
     if (idle) {
-      if (saving) html += `<span class="status" data-tauri-drag-region><span class="spin" aria-hidden="true"></span>Saving…</span>`;
-      else if (saved) html += `<span class="status saved" data-tauri-drag-region>✓ Saved</span>${btn('reveal', 'Show')}${btn('library', 'Library')}${btn('dismiss', '✕', '', 'aria-label="Dismiss"')}`;
-      if (note) html += `<span class="status ${note.err ? 'err' : ''}" data-tauri-drag-region>${lumos.esc(note.text)}</span>${btn('dismiss', '✕', '', 'aria-label="Dismiss"')}`;
+      if (saving) html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Saving…</span>`;
+      else if (saved) html += `<span class="status saved" data-tauri-drag-region>✓ Saved</span>${ibtn('reveal', icon.folder, 'Show in Finder')}${ibtn('library', icon.library, 'Open library')}${ibtn('dismiss', icon.x, 'Dismiss')}`;
+      if (note) html += msg() + (saved ? '' : ibtn('dismiss', icon.x, 'Dismiss'));
     } else if (s === 'preparing') {
-      html += `<span class="status" data-tauri-drag-region>Getting ready…</span>` + btn('cancel', 'Cancel');
+      html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Getting ready…</span>` + ibtn('cancel', icon.x, 'Cancel');
     } else if (s === 'countdown') {
-      html += `<span class="count" id="count">…</span>` + btn('cancel', 'Cancel');
+      html += `<span class="count" id="count" data-tauri-drag-region>…</span>` + ibtn('cancel', icon.x, 'Cancel');
     } else if (s === 'recording' || s === 'paused') {
       const paused = s === 'paused';
-      html += `<span class="dot ${paused ? '' : 'pulse'}" data-tauri-drag-region></span>`;
-      html += `<span class="time" id="time" data-tauri-drag-region>${lumos.fmtClock(st.elapsedUs)}</span>`;
-      if (paused) html += `<span class="status" data-tauri-drag-region>Paused</span>`;
-      html += sep;
-      if (confirmingDiscard) {
-        html += `<span class="status" data-tauri-drag-region>Discard this recording?</span>` + btn('discard-yes', 'Discard', 'discard') + btn('discard-no', 'Keep');
+      html += ibtn('stop', icon.stop, 'Stop and save', 'stop');
+      html += `<span class="time ${paused ? 'paused' : ''}" id="time" data-tauri-drag-region>${lumos.fmtClock(st.elapsedUs)}</span>`;
+      if (confirming) {
+        const yes = confirming === 'discard' ? 'Discard' : 'Restart';
+        html += `<span class="status" data-tauri-drag-region>${yes} this recording?</span>`;
+        html += btn('confirm-yes', yes, 'text danger') + btn('confirm-no', 'Keep', 'text');
       } else {
+        html += paused ? ibtn('resume', icon.play, 'Resume') : ibtn('pause', icon.pause, 'Pause');
+        html += ibtn('restart', icon.restart, 'Restart recording');
+        html += ibtn('discard', icon.trash, 'Delete recording');
         // Window recordings capture only that window, so drawings would not show up in them.
         if (st.source?.source?.kind !== 'window') {
-          html += btn('draw', brush, `draw${drawing ? ' on' : ''}`, `aria-pressed="${drawing}" aria-label="Draw on screen" title="${drawing ? 'Stop drawing and clear (Esc)' : 'Draw on screen'}"`);
+          html += sep;
+          html += btn('draw', icon.pen, `draw${drawing ? ' on' : ''}`, `aria-pressed="${drawing}" aria-label="Draw on screen" title="${drawing ? 'Stop drawing and clear (Esc)' : 'Draw on screen'}"`);
         }
-        html += btn(paused ? 'resume' : 'pause', paused ? 'Resume' : 'Pause');
-        html += btn('stop', '■ Stop', 'stop');
-        html += btn('discard', 'Discard', 'discard', 'title="Throw this recording away"');
       }
-      if (note) html += `<span class="status ${note.err ? 'err' : ''}" data-tauri-drag-region>${lumos.esc(note.text)}</span>`;
+      html += msg();
     } else {
-      html += `<span class="status" data-tauri-drag-region>${s === 'discarding' ? 'Discarding…' : 'Working…'}</span>`;
+      html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>${s === 'discarding' ? 'Discarding…' : 'Working…'}</span>`;
     }
     pill.innerHTML = html;
     if (s === 'countdown') tickCountdown();
@@ -110,9 +123,20 @@
     resume: () => lumos.call('recording.resume'),
     async stop() { try { await lumos.call('recording.stop', { wait: false }); } catch (e) { flash(lumos.errText(e), true); } },
     cancel: () => lumos.call('recording.cancel', { confirm: true }),
-    discard() { confirmingDiscard = true; render(); },
-    'discard-no'() { confirmingDiscard = false; render(); },
-    async 'discard-yes'() { confirmingDiscard = false; await lumos.call('recording.cancel', { confirm: true }); },
+    discard() { confirming = 'discard'; render(); },
+    restart() { confirming = 'restart'; render(); },
+    'confirm-no'() { confirming = null; render(); },
+    async 'confirm-yes'() {
+      const what = confirming;
+      confirming = null;
+      await lumos.call('recording.cancel', { confirm: true });
+      // Start again with the same source, camera and mic the menu last used.
+      if (what === 'restart') {
+        let params = {};
+        try { params = JSON.parse(localStorage.getItem('lastStart') || '{}'); } catch (_) { /* use defaults */ }
+        await lumos.call('recording.start', params);
+      }
+    },
     dismiss() { saved = null; note = null; render(); },
     async library() { await lumos.invoke('show_window', { label: 'main' }); lumos.emit('show-tab', 'library'); },
     async reveal() { if (saved) await lumos.call('library.reveal', { id: saved.id }); },
@@ -128,7 +152,7 @@
     switch (ev.type) {
       case 'recorder.stateChanged':
         // Never leave the full-screen overlay up once there is no toolbar button to close it.
-        if (ev.data.state !== 'recording' && ev.data.state !== 'paused') { confirmingDiscard = false; setDraw(false); }
+        if (ev.data.state !== 'recording' && ev.data.state !== 'paused') { confirming = null; setDraw(false); }
         if (ev.data.state === 'countdown') {
           lumos.call('settings.get', { path: 'recording.countdownSeconds' }).then((secs) => { countdownEnd = Date.now() + (Number(secs) || 0) * 1000; tickCountdown(); }).catch(() => {});
         }
