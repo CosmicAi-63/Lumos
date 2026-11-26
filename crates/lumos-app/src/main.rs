@@ -45,7 +45,7 @@ fn toggle_menu(app: &AppHandle, icon: tauri::Rect) {
     let scale = w.scale_factor().unwrap_or(2.0);
     let pos = icon.position.to_physical::<f64>(scale);
     let size = icon.size.to_physical::<f64>(scale);
-    let width = w.outer_size().map(|s| s.width as f64).unwrap_or(324.0 * scale);
+    let width = w.outer_size().map(|s| s.width as f64).unwrap_or(380.0 * scale);
     let x = (pos.x + size.width / 2.0 - width / 2.0).max(4.0 * scale);
     let y = pos.y + size.height;
     let _ = w.set_position(PhysicalPosition::new(x, y));
