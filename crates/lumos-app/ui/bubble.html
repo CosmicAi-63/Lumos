@@ -18,10 +18,10 @@
     async function applySettings() {
       try {
         const cam = await lumos.call('settings.get', { path: 'camera' });
-        const shape = cam.shape === 'circle' ? 'circle' : cam.shape === 'roundedRect' ? 'rounded' : '';
-        frame.className = `bubble-frame ${shape}${cam.mirror ? ' mirror' : ''}`;
+        // Always a plain circle, like Loom: no outline, no square.
+        frame.className = `bubble-frame circle${cam.mirror ? ' mirror' : ''}`;
         const px = { s: 140, m: 200, l: 280 }[cam.size] || 200;
-        await lumos.invoke('set_window_size', { label: 'bubble', width: px, height: cam.shape === 'rect' ? Math.round(px * 0.75) : px });
+        await lumos.invoke('set_window_size', { label: 'bubble', width: px, height: px });
       } catch (_) {}
     }
 
