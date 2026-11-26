@@ -274,10 +274,10 @@ func ensureAccess(_ media: AVMediaType, _ what: String) async throws {
 }
 
 /// Windows of the app that launched this helper (toolbar, panels), so they never appear in the
-/// video. The camera bubble is the exception: it is meant to be recorded with the screen.
+/// video. The camera bubble and the drawing overlay are the exceptions: they are meant to be recorded.
 func ownWindows(_ content: SCShareableContent) -> [SCWindow] {
     let parent = getppid()
-    return content.windows.filter { $0.owningApplication?.processID == parent && $0.title != "Lumos Camera" }
+    return content.windows.filter { $0.owningApplication?.processID == parent && $0.title != "Lumos Camera" && $0.title != "Lumos Draw" }
 }
 
 func resolveFilter(_ source: [String: Any], _ content: SCShareableContent) throws -> (SCContentFilter, String, CGRect?) {
