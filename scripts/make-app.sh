@@ -17,7 +17,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Lumos"
 # The capture helper lives inside the app, so the bundle never reads from the source tree.
-HELPER=$(ls -t target/$PROFILE/build/lumos-capture-*/out/lumos-capture-helper 2>/dev/null | head -1)
+# Newer Cargo puts build-script output in build/lumos-capture/<hash>/out, older Cargo in build/lumos-capture-<hash>/out.
+HELPER=$(find target/$PROFILE/build -type f -name lumos-capture-helper -path '*lumos-capture*' -exec ls -t {} + 2>/dev/null | head -1)
 [ -n "$HELPER" ] || { echo "capture helper was not built" >&2; exit 1; }
 cp "$HELPER" "$APP/Contents/MacOS/lumos-capture-helper"
 # App icon: an .icns made from the 512px PNG.
@@ -43,7 +44,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSCameraUsageDescription</key><string>Lumos shows your camera in the face bubble and records it with your screen.</string>
   <key>NSMicrophoneUsageDescription</key><string>Lumos records your voice with the screen recording.</string>

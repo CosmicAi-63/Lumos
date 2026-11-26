@@ -8,7 +8,7 @@ Pick a screen, window or area, and record it with your mic, system audio and a c
 
 ## Quick start
 
-Lumos runs on macOS 13 or later on Apple Silicon (M1 and newer). Windows, Linux and Intel Macs are not supported yet.
+Lumos runs on macOS 14 (Sonoma) or later on Apple Silicon (M1 and newer). Windows, Linux and Intel Macs are not supported yet.
 
 1. **Install ffmpeg.** Lumos uses it to put the final video together. With [Homebrew](https://brew.sh):
    ```bash
@@ -53,7 +53,7 @@ Working:
 - Library, export, import and recover tools.
 - Desktop app (Tauri): menu-bar popover, floating toolbar, camera bubble and main window.
 
-Not done yet: Windows and Linux, Intel Mac builds, signed and notarized builds, transcription, trim UI polish, testing on macOS 13 and 14, and long-recording sync. So far it has been tested on one machine running macOS 15.
+Not done yet: Windows and Linux, Intel Mac builds, signed and notarized builds, transcription, trim UI polish, testing on macOS 14, and long-recording sync. So far it has been tested on one machine running macOS 15.
 
 See the [roadmap](docs/08-roadmap.md).
 
