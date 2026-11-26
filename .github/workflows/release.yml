@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag like v0.1.0 to build the macOS app and attach it to a GitHub release.
+# The README links to releases/latest/download/Lumos-macos-arm64.dmg, so keep the asset name stable.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build DMG
+        run: scripts/make-dmg.sh
+      - name: Check bundle
+        run: |
+          hdiutil attach dist/Lumos-macos-arm64.dmg -mountpoint /tmp/lumos-dmg -nobrowse
+          test -x /tmp/lumos-dmg/Lumos.app/Contents/MacOS/Lumos
+          test -x /tmp/lumos-dmg/Lumos.app/Contents/MacOS/lumos-capture-helper
+          codesign --verify --deep /tmp/lumos-dmg/Lumos.app
+          hdiutil detach /tmp/lumos-dmg
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumos-macos-arm64
+          path: dist/Lumos-macos-arm64.dmg
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/Lumos-macos-arm64.dmg \
+            --title "Lumos $GITHUB_REF_NAME" --generate-notes \
+            || gh release upload "$GITHUB_REF_NAME" dist/Lumos-macos-arm64.dmg --clobber
