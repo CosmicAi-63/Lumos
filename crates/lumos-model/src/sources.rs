@@ -45,6 +45,16 @@ pub struct Display {
     pub refresh_hz: f64,
 }
 
+/// A window that can be recorded. Lumos's own windows are never listed.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowInfo {
+    pub id: u64,
+    pub app: String,
+    pub title: String,
+    pub bounds: Rect,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {

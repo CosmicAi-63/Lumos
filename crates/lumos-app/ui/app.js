@@ -214,6 +214,8 @@
         ${select('audio.micDeviceId', 'Microphone', s.audio.micDeviceId, dev(mics), 'nullable')}
         ${check('audio.systemAudio', 'Record system audio', s.audio.systemAudio, 'Needs macOS 13 or later.')}
         ${num('audio.micGainDb', 'Microphone gain (dB)', s.audio.micGainDb, -20, 20, 0.5)}
+        ${num('audio.syncOffsetMs', 'Audio sync adjustment (ms)', s.audio.syncOffsetMs, -500, 500, 10)}
+        <div class="hint">If sound arrives before the picture, raise this (try 100). If it arrives after, lower it. Applies to new recordings.</div>
       </fieldset>
       <fieldset><legend>Transcripts</legend>
         <label class="f"><span>Whisper model file</span><input type="text" data-path="advanced.whisperModelPath" data-type="nullable" placeholder="/path/to/ggml-medium.bin" value="${esc(s.advanced.whisperModelPath ?? '')}">

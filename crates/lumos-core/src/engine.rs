@@ -186,6 +186,7 @@ impl Inner {
             }
             "permissions.status" => json(self.backend.permissions().await),
             "sources.displays" => json(self.backend.displays().await?),
+            "sources.windows" => json(self.backend.windows().await?),
             "sources.cameras" => json(self.backend.cameras().await?),
             "sources.microphones" => json(self.backend.microphones().await?),
 

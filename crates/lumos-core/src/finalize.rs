@@ -25,6 +25,8 @@ pub(crate) struct FinalizeInput {
     pub keep_source_tracks: String,
     pub mic_gain_db: f64,
     pub system_gain_db: f64,
+    /// Added to every audio segment's start, in microseconds (the `audio.syncOffsetMs` setting).
+    pub audio_offset_us: i64,
 }
 
 pub(crate) async fn run(inner: Arc<Inner>, job_id: String, mut input: FinalizeInput) {
@@ -32,8 +34,10 @@ pub(crate) async fn run(inner: Arc<Inner>, job_id: String, mut input: FinalizeIn
     match finalize(&inner, &job_id, &mut input).await {
         Ok(ready) => {
             tracing::info!(recording = %ready.recording_id, output = %ready.output_path, "recording saved");
-            inner.emit(events::RECORDING_READY, &ready);
+            // Mark the job done first, so a client that reacts to the event and reads the recorder
+            // status no longer sees this recording as "still saving".
             inner.jobs.finish(&job_id, serde_json::to_value(&ready).map_err(|e| ToolError::backend(e.to_string())));
+            inner.emit(events::RECORDING_READY, &ready);
         }
         Err(e) => {
             tracing::error!(recording = %input.id, error = %e, "finalize failed");
@@ -41,8 +45,8 @@ pub(crate) async fn run(inner: Arc<Inner>, job_id: String, mut input: FinalizeIn
             input.manifest.status = RecordingStatus::Failed;
             input.manifest.warnings.push(Warning { at_us: input.manifest.duration_us, code: e.code.as_str().into(), message: e.message.clone() });
             let _ = write_json_atomic(&input.bundle_dir.join("manifest.json"), &input.manifest);
+            inner.jobs.finish(&job_id, Err(e.clone()));
             inner.emit(events::RECORDING_FAILED, json!({ "recordingId": input.id, "error": &e }));
-            inner.jobs.finish(&job_id, Err(e));
         }
     }
 }
@@ -65,8 +69,25 @@ pub(crate) async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput)
             continue;
         }
         let inputs: Vec<PathBuf> = t.files.iter().map(|rel| bundle.join(rel)).collect();
-        let out = work.join(format!("{}.{}", t.kind.dir(), t.kind.ext()));
-        lumos_media::concat(&inputs, &out).await.map_err(media)?;
+        let segs = &f.manifest.segments;
+        let audio = matches!(t.kind, TrackKind::Mic | TrackKind::SystemAudio);
+        let out = if audio && !segs.is_empty() && segs.len() == inputs.len() {
+            // Put every audio segment back on the video's clock: it starts where its first sample really
+            // began and is exactly as long as its video segment. Joining raw PCM avoids encoder gaps.
+            let mut parts = Vec::new();
+            for (i, (input, seg)) in inputs.iter().zip(segs).enumerate() {
+                let part = work.join(format!("{}-{i:03}.wav", t.kind.dir()));
+                lumos_media::fit_audio(input, &part, (seg.end_us - seg.start_us).max(0), f.audio_offset_us).await.map_err(media)?;
+                parts.push(part);
+            }
+            let out = work.join(format!("{}.wav", t.kind.dir()));
+            lumos_media::concat(&parts, &out).await.map_err(media)?;
+            out
+        } else {
+            let out = work.join(format!("{}.{}", t.kind.dir(), t.kind.ext()));
+            lumos_media::concat(&inputs, &out).await.map_err(media)?;
+            out
+        };
         joined.insert(t.kind, out);
         inner.jobs.progress(job_id, (i as f64 + 1.0) / steps);
     }

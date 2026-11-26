@@ -19,6 +19,7 @@
         "micDeviceId": null,
         "micEnabled": true,
         "micGainDb": 0.0,
+        "syncOffsetMs": 0,
         "systemAudio": false,
         "systemGainDb": -6.0
       }
@@ -203,6 +204,12 @@
           "type": "number",
           "format": "double",
           "default": 0.0
+        },
+        "syncOffsetMs": {
+          "description": "Shift all audio later (positive) or earlier (negative) against the video, in milliseconds.",
+          "type": "integer",
+          "format": "int32",
+          "default": 0
         },
         "systemAudio": {
           "type": "boolean",

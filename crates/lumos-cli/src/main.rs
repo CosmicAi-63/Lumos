@@ -182,6 +182,8 @@ enum SettingsCmd {
 enum SourcesCmd {
     /// Displays that can be recorded.
     Displays,
+    /// Windows that can be recorded.
+    Windows,
     /// Cameras.
     Cameras,
     /// Microphones.
@@ -388,6 +390,7 @@ fn plan(cmd: Cmd) -> ToolResult<Plan> {
         },
         Cmd::Sources(s) => match s {
             SourcesCmd::Displays => Tool("sources.displays", e()),
+            SourcesCmd::Windows => Tool("sources.windows", e()),
             SourcesCmd::Cameras => Tool("sources.cameras", e()),
             SourcesCmd::Mics => Tool("sources.microphones", e()),
         },

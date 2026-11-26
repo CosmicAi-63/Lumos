@@ -54,7 +54,14 @@ pub trait CaptureBackend: Send + Sync {
     /// False for backends that can't record yet (the macOS stub).
     fn can_record(&self) -> bool;
     async fn permissions(&self) -> PermissionStatus;
+    /// Ask the OS for Screen Recording. On macOS this shows the system dialog and registers the app
+    /// in the Screen Recording list. Does nothing on backends that need no permission.
+    async fn request_screen_access(&self) {}
     async fn displays(&self) -> ToolResult<Vec<Display>>;
+    /// Windows that can be recorded (visible, normal windows of other apps).
+    async fn windows(&self) -> ToolResult<Vec<lumos_model::sources::WindowInfo>> {
+        Ok(Vec::new())
+    }
     async fn cameras(&self) -> ToolResult<Vec<Device>>;
     async fn microphones(&self) -> ToolResult<Vec<Device>>;
     /// Open all streams. They warm up while the countdown runs; nothing is written yet.

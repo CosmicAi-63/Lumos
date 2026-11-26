@@ -21,12 +21,52 @@ pub enum MediaError {
 
 pub type Result<T> = std::result::Result<T, MediaError>;
 
+/// Where package managers put command-line tools. An app started from Finder gets only
+/// `/usr/bin:/bin:/usr/sbin:/sbin` as its PATH, so `ffmpeg` from Homebrew is invisible without these.
+const EXTRA_BIN_DIRS: &[&str] = &["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin", "/usr/bin"];
+
+/// The binary to run for `name`: the `env_var` override, else the first match on PATH or in
+/// [`EXTRA_BIN_DIRS`], else the bare name (so the error says what is missing).
+pub fn resolve_binary(name: &str, env_var: &str) -> PathBuf {
+    if let Some(p) = std::env::var_os(env_var) {
+        return PathBuf::from(p);
+    }
+    let path_dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+    find_in(name, path_dirs.into_iter().chain(EXTRA_BIN_DIRS.iter().map(PathBuf::from)))
+}
+
+/// The first `dir/name` that is a file, else the bare `name`.
+fn find_in(name: &str, dirs: impl IntoIterator<Item = PathBuf>) -> PathBuf {
+    dirs.into_iter().map(|d| d.join(name)).find(|p| p.is_file()).unwrap_or_else(|| name.into())
+}
+
+#[cfg(test)]
+mod resolve_tests {
+    use super::*;
+
+    #[test]
+    fn finds_a_tool_outside_the_minimal_finder_path() {
+        // An app started from Finder sees only these directories, not Homebrew's.
+        let minimal = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"].map(PathBuf::from);
+        let homebrew = tempfile::tempdir().unwrap();
+        std::fs::write(homebrew.path().join("faketool"), "").unwrap();
+        assert_eq!(find_in("faketool", minimal.clone()), PathBuf::from("faketool"), "not found without the extra directory");
+        let dirs = minimal.into_iter().chain([homebrew.path().to_path_buf()]);
+        assert_eq!(find_in("faketool", dirs), homebrew.path().join("faketool"));
+    }
+
+    #[test]
+    fn homebrew_locations_are_searched() {
+        assert!(EXTRA_BIN_DIRS.contains(&"/opt/homebrew/bin") && EXTRA_BIN_DIRS.contains(&"/usr/local/bin"));
+    }
+}
+
 fn ffmpeg() -> PathBuf {
-    std::env::var_os("LUMOS_FFMPEG").map(PathBuf::from).unwrap_or_else(|| "ffmpeg".into())
+    resolve_binary("ffmpeg", "LUMOS_FFMPEG")
 }
 
 fn ffprobe() -> PathBuf {
-    std::env::var_os("LUMOS_FFPROBE").map(PathBuf::from).unwrap_or_else(|| "ffprobe".into())
+    resolve_binary("ffprobe", "LUMOS_FFPROBE")
 }
 
 /// First line of `ffmpeg -version`, or `None` if ffmpeg can't run.
@@ -106,9 +146,37 @@ pub async fn concat(inputs: &[PathBuf], out: &Path) -> Result<()> {
     res
 }
 
-/// Mix several audio files into one AAC track. One input is copied as is.
+/// Where the first audio sample sits on the file's own clock, in microseconds (0 if unknown).
+pub async fn probe_audio_start_us(input: &Path) -> Result<i64> {
+    let out = run(
+        "ffprobe",
+        ffprobe(),
+        args!["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=start_time", "-of", "default=noprint_wrappers=1:nokey=1", input],
+    )
+    .await?;
+    Ok(out.trim().parse::<f64>().map(|s| (s * 1e6).round() as i64).unwrap_or(0))
+}
+
+/// Re-time one audio segment onto the video clock: its first sample lands at its own start time plus
+/// `shift_us`, and the result is exactly `duration_us` long (silence-padded or cut). Writes 48 kHz PCM.
+pub async fn fit_audio(input: &Path, out: &Path, duration_us: i64, shift_us: i64) -> Result<()> {
+    let at = probe_audio_start_us(input).await? + shift_us;
+    let dur = duration_us.max(0) as f64 / 1e6;
+    // Timestamps are rebuilt from the sample count so the file's own start offset can't leak into the trims.
+    let mut graph = String::from("asetpts=N/SR/TB,");
+    if at > 0 {
+        graph.push_str(&format!("adelay={:.3}:all=1,asetpts=N/SR/TB,", at as f64 / 1000.0));
+    } else if at < 0 {
+        graph.push_str(&format!("atrim=start={:.6},asetpts=N/SR/TB,", (-at) as f64 / 1e6));
+    }
+    graph.push_str(&format!("apad=whole_dur={dur:.6},atrim=end={dur:.6},asetpts=N/SR/TB"));
+    ff(args!["-i", input, "-vn", "-af", graph, "-ar", "48000", "-c:a", "pcm_s16le", out]).await
+}
+
+/// Mix several audio files into one AAC track. One AAC input is copied as is.
 pub async fn mix_audio(inputs: &[PathBuf], gains_db: &[f64], out: &Path) -> Result<()> {
-    if inputs.len() == 1 && gains_db.first().copied().unwrap_or(0.0) == 0.0 {
+    let copyable = inputs.first().is_some_and(|p| p.extension().is_some_and(|e| e == "m4a"));
+    if inputs.len() == 1 && copyable && gains_db.first().copied().unwrap_or(0.0) == 0.0 {
         tokio::fs::copy(&inputs[0], out).await?;
         return Ok(());
     }
@@ -183,7 +251,7 @@ pub struct Transcode<'a> {
 pub async fn transcribe(input: &Path, model: &Path, language: &str, out_base: &Path) -> Result<()> {
     let wav = out_base.with_extension("tmp.wav");
     ff(args!["-i", input, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", &wav]).await?;
-    let bin: PathBuf = std::env::var_os("LUMOS_WHISPER").map(PathBuf::from).unwrap_or_else(|| "whisper-cli".into());
+    let bin = resolve_binary("whisper-cli", "LUMOS_WHISPER");
     let r = run(
         "whisper-cli",
         bin,
@@ -225,4 +293,41 @@ pub async fn transcode(t: Transcode<'_>) -> Result<()> {
     }
     a.push(t.output.into());
     ff(a).await
+}
+
+#[cfg(test)]
+mod fit_audio_tests {
+    use super::*;
+
+    fn block_on<F: std::future::Future>(f: F) -> F::Output {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime").block_on(f)
+    }
+
+    #[test]
+    fn fit_audio_pads_and_trims_to_the_segment_length() {
+        if block_on(ffmpeg_version()).is_none() {
+            return; // no ffmpeg on this machine
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let tone = dir.path().join("tone.m4a");
+        block_on(generate_test_tone(&tone, 1_000_000, 440, 1)).unwrap();
+
+        // A 1 s tone shifted 100 ms into a 1.5 s segment: padded at both ends to exactly 1.5 s.
+        let padded = dir.path().join("padded.wav");
+        block_on(fit_audio(&tone, &padded, 1_500_000, 100_000)).unwrap();
+        let d = block_on(probe_duration_us(&padded)).unwrap();
+        assert!((d - 1_500_000).abs() < 30_000, "padded duration {d}");
+
+        // The same tone cut to a 0.5 s segment: trimmed.
+        let cut = dir.path().join("cut.wav");
+        block_on(fit_audio(&tone, &cut, 500_000, 0)).unwrap();
+        let d = block_on(probe_duration_us(&cut)).unwrap();
+        assert!((d - 500_000).abs() < 30_000, "cut duration {d}");
+
+        // A negative shift drops the head of the audio but keeps the segment length.
+        let early = dir.path().join("early.wav");
+        block_on(fit_audio(&tone, &early, 800_000, -300_000)).unwrap();
+        let d = block_on(probe_duration_us(&early)).unwrap();
+        assert!((d - 800_000).abs() < 30_000, "early duration {d}");
+    }
 }

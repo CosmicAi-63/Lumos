@@ -175,11 +175,13 @@ pub struct Audio {
     pub system_audio: bool,
     pub mic_gain_db: f64,
     pub system_gain_db: f64,
+    /// Shift all audio later (positive) or earlier (negative) against the video, in milliseconds.
+    pub sync_offset_ms: i32,
 }
 
 impl Default for Audio {
     fn default() -> Self {
-        Self { mic_enabled: true, mic_device_id: None, system_audio: false, mic_gain_db: 0.0, system_gain_db: -6.0 }
+        Self { mic_enabled: true, mic_device_id: None, system_audio: false, mic_gain_db: 0.0, system_gain_db: -6.0, sync_offset_ms: 0 }
     }
 }
 

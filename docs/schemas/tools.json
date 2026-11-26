@@ -574,6 +574,95 @@
   {
     "cli": [
       "sources",
+      "windows"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_sources_windows",
+    "name": "sources.windows",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "Rect": {
+          "properties": {
+            "h": {
+              "format": "double",
+              "type": "number"
+            },
+            "w": {
+              "format": "double",
+              "type": "number"
+            },
+            "x": {
+              "format": "double",
+              "type": "number"
+            },
+            "y": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "WindowInfo": {
+          "description": "A window that can be recorded. Lumos's own windows are never listed.",
+          "properties": {
+            "app": {
+              "type": "string"
+            },
+            "bounds": {
+              "$ref": "#/$defs/Rect"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "app",
+            "title",
+            "bounds"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/WindowInfo"
+      },
+      "title": "Array_of_WindowInfo",
+      "type": "array"
+    },
+    "states": null,
+    "summary": "Windows that can be recorded. Needs Screen Recording permission.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "sources",
       "cameras"
     ],
     "effect": "readOnly",

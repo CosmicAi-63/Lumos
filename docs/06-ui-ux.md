@@ -34,7 +34,9 @@ Menu bar ● / ⌘⇧L ─▶ Source picker ─▶ (Area? drag rectangle) ─▶
 
 ## Source picker
 
-A compact panel near the menu bar.
+A light popover that drops down from the menu-bar icon, like Loom's. Lumos has no Dock icon: it is a menu-bar app only (`LSUIElement`), and the capture helper is a background process too, so nothing bounces in the Dock while recording.
+
+**Built (M1):** Screen, Camera and Microphone rows. Each device row has an on/off switch and a list of devices to choose from. A large **Start recording** button sits under them, and Library, Settings and Quit are links at the bottom. Clicking anywhere else closes the popover. While a recording runs, the same popover shows the time with Pause and Stop. Opening it with the camera on shows the face bubble as a preview. The choices are remembered. The Window and Area tabs, the system-audio switch and the mic level meter below are not built yet.
 
 - **Source tabs:** Full screen (display list with thumbnails), Window (searchable list with app icons), Area (opens the selector).
   Tools: `sources.displays`, `sources.windows`.
@@ -144,12 +146,12 @@ The onboarding comes back if a permission is later revoked, triggered by `permis
 ## Accessibility
 
 - Every toolbar and bubble control can be reached with the keyboard and has a VoiceOver or Narrator label. The timer is announced on pause and resume, not every second.
-- Contrast is at least 4.5:1 on the translucent toolbar in both light and dark mode.
+- Contrast is at least 4.5:1 on the toolbar and popover.
 - `prefers-reduced-motion` turns off the pulsing record dot and the countdown animation.
 - State always pairs an icon with text, never color alone.
 
 ## Visual direction
 
-- Quiet and native. The toolbar is a dark translucent pill with system fonts.
+- Quiet and native, and always light. The popover and the toolbar are white, rounded and use system fonts. Lumos has no dark mode. The toolbar only appears while a recording is being prepared, running or just saved, then hides again.
 - Red is used only for record and stop. Amber is used only for paused.
 - No branding inside recordings, ever.

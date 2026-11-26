@@ -141,6 +141,31 @@ async fn record_pause_resume_stop_saves_an_mp4() {
     h.server.abort();
 }
 
+/// The toolbar shows "Saving…" while the recorder lists a pending save. When the ready event
+/// arrives, that list must already be empty, or "Saving…" would stay on screen.
+#[tokio::test]
+async fn ready_event_arrives_when_the_recorder_no_longer_lists_a_pending_save() {
+    let h = harness().await;
+    let c = connect(&h, "cli").await;
+    set_save_folder(&c, &h.save).await;
+    c.call("events.subscribe", json!({ "topics": ["recording."] })).await.unwrap();
+    let mut events = c.take_events().unwrap();
+
+    c.call("recording.start", json!({ "countdownSeconds": 0 })).await.unwrap();
+    sleep(Duration::from_millis(600)).await;
+    c.call("recording.stop", json!({})).await.unwrap();
+
+    loop {
+        let ev = tokio::time::timeout(Duration::from_secs(30), events.recv()).await.expect("ready event in time").expect("event stream open");
+        if ev.kind == "recording.ready" {
+            break;
+        }
+    }
+    let after = c.call("recording.status", json!({})).await.unwrap();
+    assert!(after["pendingFinalize"].as_array().unwrap().is_empty(), "still listed as saving after the ready event: {after}");
+    h.server.abort();
+}
+
 #[tokio::test]
 async fn stop_without_wait_returns_a_job_and_recorder_is_free_at_once() {
     let h = harness().await;

@@ -243,6 +243,25 @@ func devices() -> [String: Any] {
     ]
 }
 
+/// Normal, visible windows of other apps. Needs Screen Recording permission.
+func windows() async throws -> [String: Any] {
+    let content: SCShareableContent
+    do {
+        content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+    } catch {
+        throw Fail(code: "PERMISSION_DENIED", message: "cannot list windows: \(error.localizedDescription)")
+    }
+    let own = getppid()
+    let list: [[String: Any]] = content.windows.compactMap { w in
+        guard w.isOnScreen, w.windowLayer == 0, w.frame.width >= 120, w.frame.height >= 80,
+              let app = w.owningApplication, app.processID != own,
+              let title = w.title, !title.isEmpty else { return nil }
+        return ["id": w.windowID, "app": app.applicationName, "title": title,
+                "bounds": ["x": w.frame.origin.x, "y": w.frame.origin.y, "w": w.frame.width, "h": w.frame.height]]
+    }
+    return ["ok": true, "windows": list]
+}
+
 func ensureAccess(_ media: AVMediaType, _ what: String) async throws {
     switch AVCaptureDevice.authorizationStatus(for: media) {
     case .authorized: return
@@ -404,6 +423,7 @@ struct Helper {
                 switch name {
                 case "permissions": send(permissions())
                 case "devices": send(devices())
+                case "windows": send(try await windows())
                 case "open":
                     if session != nil { throw Fail(code: "INVALID_STATE", message: "already open") }
                     let (s, reply) = try await open(cmd)

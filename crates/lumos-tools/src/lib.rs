@@ -10,7 +10,7 @@ use lumos_model::api::*;
 use lumos_model::jobs::Job;
 use lumos_model::recorder::{RecorderState, RecorderStatus};
 use lumos_model::settings::Settings;
-use lumos_model::sources::{Device, Display, PermissionStatus};
+use lumos_model::sources::{Device, Display, PermissionStatus, WindowInfo};
 use schemars::{JsonSchema, Schema};
 use serde::Serialize;
 use serde_json::Value;
@@ -133,6 +133,7 @@ fn build() -> Vec<ToolDef> {
         // permissions / sources
         tool!("permissions.status", "Screen, camera, microphone and accessibility permission states.", Empty => PermissionStatus, ReadOnly, ALL, None, ["permissions", "status"]),
         tool!("sources.displays", "Displays that can be recorded.", Empty => Vec<Display>, ReadOnly, ALL, None, ["sources", "displays"]),
+        tool!("sources.windows", "Windows that can be recorded. Needs Screen Recording permission.", Empty => Vec<WindowInfo>, ReadOnly, ALL, None, ["sources", "windows"]),
         tool!("sources.cameras", "Cameras that can be used for the face bubble.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "cameras"]),
         tool!("sources.microphones", "Microphones that can be recorded.", Empty => Vec<Device>, ReadOnly, ALL, None, ["sources", "mics"]),
         // recording

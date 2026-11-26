@@ -17,9 +17,31 @@ fn main() {
     let out = out_dir.join("lumos-capture-helper");
     let src = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir")).join("swift/helper.swift");
 
+    // An Info.plist baked into the helper marks it as a background process. Without it macOS gives the
+    // helper its own bouncing Dock icon every time a recording starts.
+    let plist = out_dir.join("helper-Info.plist");
+    let plist_ok = std::fs::write(
+        &plist,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>dev.lumos.app.helper</string>
+<key>CFBundleName</key><string>Lumos Capture</string>
+<key>LSUIElement</key><true/>
+</dict></plist>
+"#,
+    )
+    .is_ok();
+    let embed: Vec<String> = if plist_ok {
+        ["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker"].iter().map(|s| s.to_string()).chain([plist.display().to_string()]).collect()
+    } else {
+        Vec::new()
+    };
+
     let compile = |extra: &[String]| -> Result<(), String> {
         let o = Command::new("xcrun")
             .args(["swiftc", "-O", "-swift-version", "5", "-parse-as-library"])
+            .args(&embed)
             .args(extra)
             .arg(&src)
             .arg("-o")

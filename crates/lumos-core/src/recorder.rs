@@ -187,7 +187,14 @@ impl Inner {
             }
         }
         if self.backend.permissions().await.screen == PermissionState::Denied {
-            return Err(ToolError::new(ErrorCode::PermissionDenied, "Screen Recording permission is not granted"));
+            // Let macOS ask: it shows its own dialog and lists the app, which a hand-added entry may not match.
+            self.backend.request_screen_access().await;
+            if self.backend.permissions().await.screen == PermissionState::Denied {
+                return Err(ToolError::new(
+                    ErrorCode::PermissionDenied,
+                    "Screen Recording permission is not granted. macOS should be asking now: choose Open System Settings, switch Lumos on, then record again. If Lumos is listed but still refused, select it, press the minus button, and record again so macOS asks.",
+                ));
+            }
         }
 
         let id = new_id("rec");
@@ -440,6 +447,7 @@ impl Inner {
             keep_source_tracks: s.storage.keep_source_tracks,
             mic_gain_db: s.audio.mic_gain_db,
             system_gain_db: s.audio.system_gain_db,
+            audio_offset_us: i64::from(s.audio.sync_offset_ms) * 1000,
         };
         tokio::spawn(finalize::run(self.clone(), job.id.clone(), input));
         self.set_state(rec, RecorderState::Idle);

@@ -12,7 +12,7 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use lumos_model::manifest::TrackKind;
-use lumos_model::sources::{CaptureSource, Device, Display, PermissionState, PermissionStatus, Rect};
+use lumos_model::sources::{CaptureSource, Device, Display, PermissionState, PermissionStatus, Rect, WindowInfo};
 use lumos_model::{ErrorCode, ToolError, ToolResult};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -49,6 +49,7 @@ unsafe extern "C" {
     fn CGDisplayModeGetRefreshRate(mode: *mut c_void) -> f64;
     fn CGDisplayModeRelease(mode: *mut c_void);
     fn CGPreflightScreenCaptureAccess() -> bool;
+    fn CGRequestScreenCaptureAccess() -> bool;
 }
 
 /// Longest a single helper call may take (a segment's writers finishing).
@@ -168,6 +169,11 @@ impl CaptureBackend for MacBackend {
         PermissionStatus { screen, camera, microphone, accessibility: PermissionState::Unknown }
     }
 
+    async fn request_screen_access(&self) {
+        // SAFETY: plain C call with no arguments. It returns at once; the dialog is shown by macOS.
+        let _ = unsafe { CGRequestScreenCaptureAccess() };
+    }
+
     async fn displays(&self) -> ToolResult<Vec<Display>> {
         let mut ids = [0u32; 16];
         let mut count = 0u32;
@@ -203,6 +209,28 @@ impl CaptureBackend for MacBackend {
             });
         }
         Ok(out)
+    }
+
+    async fn windows(&self) -> ToolResult<Vec<WindowInfo>> {
+        let reply = once(json!({ "cmd": "windows" })).await?;
+        Ok(reply["windows"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|w| {
+                Some(WindowInfo {
+                    id: w["id"].as_u64()?,
+                    app: w["app"].as_str().unwrap_or_default().into(),
+                    title: w["title"].as_str().unwrap_or_default().into(),
+                    bounds: Rect {
+                        x: w["bounds"]["x"].as_f64().unwrap_or(0.0),
+                        y: w["bounds"]["y"].as_f64().unwrap_or(0.0),
+                        w: w["bounds"]["w"].as_f64().unwrap_or(0.0),
+                        h: w["bounds"]["h"].as_f64().unwrap_or(0.0),
+                    },
+                })
+            })
+            .collect())
     }
 
     async fn cameras(&self) -> ToolResult<Vec<Device>> {

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Select area</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; cursor: crosshair; user-select: none; font: 13px -apple-system, system-ui, sans-serif; }
+    #dim { position: fixed; inset: 0; background: rgba(20, 20, 30, 0.35); }
+    #box { position: fixed; display: none; border: 2px solid #5b5bf0; background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 9999px rgba(20, 20, 30, 0.35); }
+    #size { position: fixed; display: none; padding: 3px 8px; border-radius: 6px; background: #fff; color: #1c1c28; font-weight: 600; }
+    #hint { position: fixed; top: 48px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 10px; background: #fff; color: #1c1c28; box-shadow: 0 4px 18px rgba(0,0,0,.2); }
+  </style>
+</head>
+<body>
+  <div id="dim"></div>
+  <div id="box"></div>
+  <div id="size"></div>
+  <div id="hint">Drag to choose the area to record. Press Esc to cancel.</div>
+  <script>
+    const { event } = window.__TAURI__;
+    const box = document.getElementById('box'), size = document.getElementById('size'), dim = document.getElementById('dim');
+    let start = null, cur = null, done = false;
+    // Screen coordinates (points, from the display's top-left) so the rectangle is right even if the
+    // window itself was nudged below the menu bar.
+    const pt = (e) => ({ sx: e.screenX, sy: e.screenY, cx: e.clientX, cy: e.clientY });
+    const finish = (rect) => { if (done) return; done = true; event.emit('area-result', rect); };
+
+    function draw() {
+      if (!start || !cur) return;
+      const x = Math.min(start.cx, cur.cx), y = Math.min(start.cy, cur.cy);
+      const w = Math.abs(start.cx - cur.cx), h = Math.abs(start.cy - cur.cy);
+      Object.assign(box.style, { display: 'block', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+      Object.assign(size.style, { display: 'block', left: x + 'px', top: Math.max(4, y - 28) + 'px' });
+      size.textContent = Math.round(w) + ' × ' + Math.round(h);
+    }
+    addEventListener('mousedown', (e) => { start = cur = pt(e); dim.style.display = 'none'; document.getElementById('hint').style.display = 'none'; draw(); });
+    addEventListener('mousemove', (e) => { if (start) { cur = pt(e); draw(); } });
+    addEventListener('mouseup', (e) => {
+      if (!start) return;
+      cur = pt(e);
+      const w = Math.abs(start.sx - cur.sx), h = Math.abs(start.sy - cur.sy);
+      if (w < 40 || h < 40) { start = cur = null; box.style.display = size.style.display = 'none'; dim.style.display = 'block'; return; }
+      finish({ x: Math.min(start.sx, cur.sx), y: Math.min(start.sy, cur.sy), w, h });
+    });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') finish(null); });
+  </script>
+</body>
+</html>

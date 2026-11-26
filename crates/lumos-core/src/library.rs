@@ -581,6 +581,7 @@ async fn recover_one(inner: &Arc<Inner>, job_id: &str, save: &Path, bundle: &Pat
         keep_source_tracks: s.storage.keep_source_tracks,
         mic_gain_db: s.audio.mic_gain_db,
         system_gain_db: s.audio.system_gain_db,
+        audio_offset_us: i64::from(s.audio.sync_offset_ms) * 1000,
     };
     let ready = finalize::finalize(inner, job_id, &mut input).await.map_err(|e| e.message)?;
     inner.emit(lumos_model::events::RECORDING_READY, &ready);

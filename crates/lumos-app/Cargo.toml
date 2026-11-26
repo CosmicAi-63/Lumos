@@ -10,7 +10,7 @@ lumos-core = { version = "0.1.0", path = "../lumos-core" }
 lumos-model = { version = "0.1.0", path = "../lumos-model" }
 lumos-rpc = { version = "0.1.0", path = "../lumos-rpc" }
 serde_json = "1.0.154"
-tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
+tauri = { version = "2", features = ["macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
 tokio = { version = "1.54.1", features = ["process", "sync"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
