@@ -131,8 +131,9 @@ body.menu { padding: 12px; height: auto; }
 
 /* ---- bubble ---- */
 body.bubble { height: 100%; }
-.bubble-frame { width: 100%; height: 100%; overflow: hidden; background: #222 center / cover; box-shadow: inset 0 0 0 3px rgba(255,255,255,.9); display: grid; place-items: center; color: #bbb; text-align: center; padding: 14px; font-size: 12px; }
+.bubble-frame { width: 100%; height: 100%; overflow: hidden; background: #222 center / cover; border-radius: 50%; border: 0; outline: 0; box-shadow: none; display: grid; place-items: center; color: #bbb; text-align: center; padding: 14px; font-size: 12px; }
 .bubble-frame.circle { border-radius: 50%; }
 .bubble-frame.rounded { border-radius: 24px; }
-.bubble-frame video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.bubble-frame { position: relative; }
+.bubble-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .bubble-frame.mirror video { transform: scaleX(-1); }
