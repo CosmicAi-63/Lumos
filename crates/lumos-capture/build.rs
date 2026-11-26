@@ -10,6 +10,7 @@ use std::process::Command;
 fn main() {
     println!("cargo:rerun-if-changed=swift/helper.swift");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
         return;
     }
@@ -38,9 +39,19 @@ fn main() {
         Vec::new()
     };
 
+    // Pin the oldest macOS the helper runs on. Without it swiftc targets the build machine's macOS,
+    // so a helper built on a newer Mac refuses to start on older ones. The helper uses macOS 14 APIs.
+    let arch = match std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+        Ok("aarch64") => "arm64".to_string(),
+        Ok(a) => a.to_string(),
+        Err(_) => "arm64".to_string(),
+    };
+    let min_os = std::env::var("MACOSX_DEPLOYMENT_TARGET").unwrap_or_else(|_| "14.0".into());
+    let target = format!("{arch}-apple-macos{min_os}");
+
     let compile = |extra: &[String]| -> Result<(), String> {
         let o = Command::new("xcrun")
-            .args(["swiftc", "-O", "-swift-version", "5", "-parse-as-library"])
+            .args(["swiftc", "-O", "-swift-version", "5", "-parse-as-library", "-target", &target])
             .args(&embed)
             .args(extra)
             .arg(&src)
