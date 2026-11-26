@@ -105,8 +105,26 @@ fn hide_window(app: AppHandle, label: String) -> Result<(), String> {
 #[tauri::command]
 fn set_window_size(app: AppHandle, label: String, width: f64, height: f64) -> Result<(), String> {
     let w = app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?;
-    w.set_size(LogicalSize::new(width.clamp(40.0, 4000.0), height.clamp(40.0, 4000.0))).map_err(|e| e.to_string())
+    // macOS keeps the bottom edge when a window resizes; keep the top edge instead, so the toolbar
+    // grows and shrinks downward without moving.
+    let top_left = w.outer_position().ok();
+    w.set_size(LogicalSize::new(width.clamp(40.0, 4000.0), height.clamp(40.0, 4000.0))).map_err(|e| e.to_string())?;
+    if let Some(p) = top_left {
+        let _ = w.set_position(p);
+    }
+    // Once, center the toolbar on the left edge of the main display, sized for its recording layout
+    // (about 340 points tall). After that it stays wherever the user drags it.
+    if label == "toolbar" && !TOOLBAR_PLACED.swap(true, Ordering::SeqCst) {
+        if let Ok(Some(m)) = w.primary_monitor() {
+            let f = m.scale_factor();
+            let h = m.size().height as f64 / f;
+            let _ = w.set_position(LogicalPosition::new(16.0, ((h - 340.0) / 2.0).max(40.0)));
+        }
+    }
+    Ok(())
 }
+
+static TOOLBAR_PLACED: AtomicBool = AtomicBool::new(false);
 
 /// Full-screen overlay where the user drags the area to record. Returns `{x,y,w,h}` in points from
 /// the top-left of the main display, or `None` if they press Esc.
@@ -344,15 +362,15 @@ fn main() {
                     raise_above_overlays(&w);
                 }
             }
-            // Toolbar starts bottom-center on the main display.
+            // The vertical toolbar starts on the left edge of the main display, vertically centered.
             if let Some(tb) = app.get_webview_window("toolbar") {
                 if let Ok(Some(m)) = tb.primary_monitor() {
                     let f = m.scale_factor();
-                    let (w, h) = (m.size().width as f64 / f, m.size().height as f64 / f);
-                    let _ = tb.set_position(LogicalPosition::new((w - 480.0) / 2.0, h - 150.0));
-                    // The face bubble starts bottom-left, clear of the toolbar.
+                    let h = m.size().height as f64 / f;
+                    let _ = tb.set_position(LogicalPosition::new(16.0, (h - 360.0) / 2.0));
+                    // The face bubble starts bottom-left, to the right of the toolbar.
                     if let Some(b) = app.get_webview_window("bubble") {
-                        let _ = b.set_position(LogicalPosition::new(48.0, h - 290.0));
+                        let _ = b.set_position(LogicalPosition::new(120.0, h - 290.0));
                     }
                 }
             }
