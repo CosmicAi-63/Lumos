@@ -9,6 +9,7 @@
   let saved = null;          // { id, name, path } after a recording is saved
   let note = null;           // { text, err } transient message
   let confirmingDiscard = false;
+  let drawing = false;       // the drawing overlay is open
   let countdownEnd = 0;
   let timers = {};
   let shown = { toolbar: null, bubble: null };
@@ -16,6 +17,7 @@
   const grip = '<span class="grip" data-tauri-drag-region aria-hidden="true">⋮⋮</span>';
   const btn = (act, label, cls = '', extra = '') => `<button class="tb ${cls}" data-act="${act}" ${extra}>${label}</button>`;
   const sep = '<span class="sep"></span>';
+  const brush = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 14c1.6 0 3-.6 3.4-2.2.3-1-.4-2-1.4-2S2.3 10.6 2.3 12c0 .9-.1 1.5-.3 2z"/><path d="M5.6 9.4 13 2a1.4 1.4 0 0 1 2 2l-7.4 7.4"/></svg>';
   const camOn = () => { try { return JSON.parse(localStorage.getItem('camOn') ?? 'true'); } catch (_) { return true; } };
 
   function flash(text, err, ms = 6000) {
@@ -59,6 +61,10 @@
       if (confirmingDiscard) {
         html += `<span class="status" data-tauri-drag-region>Discard this recording?</span>` + btn('discard-yes', 'Discard', 'discard') + btn('discard-no', 'Keep');
       } else {
+        // Window recordings capture only that window, so drawings would not show up in them.
+        if (st.source?.source?.kind !== 'window') {
+          html += btn('draw', brush, `draw${drawing ? ' on' : ''}`, `aria-pressed="${drawing}" aria-label="Draw on screen" title="${drawing ? 'Stop drawing and clear (Esc)' : 'Draw on screen'}"`);
+        }
         html += btn(paused ? 'resume' : 'pause', paused ? 'Resume' : 'Pause');
         html += btn('stop', '■ Stop', 'stop');
         html += btn('discard', 'Discard', 'discard', 'title="Throw this recording away"');
@@ -79,6 +85,14 @@
     if (saving) timers.poll = setTimeout(refreshStatus, 2000);
   }
 
+  // Turning drawing off closes the overlay, which also clears every stroke.
+  async function setDraw(on) {
+    if (drawing === on) return;
+    drawing = on;
+    render();
+    try { await lumos.invoke('set_draw_mode', { on }); } catch (e) { drawing = false; flash(lumos.errText(e), true); }
+  }
+
   function tickCountdown() {
     clearInterval(timers.count);
     const update = () => {
@@ -91,6 +105,7 @@
   }
 
   const actions = {
+    draw: () => setDraw(!drawing),
     pause: () => lumos.call('recording.pause'),
     resume: () => lumos.call('recording.resume'),
     async stop() { try { await lumos.call('recording.stop', { wait: false }); } catch (e) { flash(lumos.errText(e), true); } },
@@ -112,7 +127,8 @@
   lumos.onEvent((ev) => {
     switch (ev.type) {
       case 'recorder.stateChanged':
-        if (ev.data.state !== 'recording' && ev.data.state !== 'paused') confirmingDiscard = false;
+        // Never leave the full-screen overlay up once there is no toolbar button to close it.
+        if (ev.data.state !== 'recording' && ev.data.state !== 'paused') { confirmingDiscard = false; setDraw(false); }
         if (ev.data.state === 'countdown') {
           lumos.call('settings.get', { path: 'recording.countdownSeconds' }).then((secs) => { countdownEnd = Date.now() + (Number(secs) || 0) * 1000; tickCountdown(); }).catch(() => {});
         }
@@ -133,6 +149,14 @@
         flash(`Couldn't save: ${(ev.data.error && ev.data.error.message) || 'unknown error'}`, true, 12000);
         refreshStatus(); break;
     }
+  });
+
+  lumos.on('draw-exit', () => setDraw(false));
+  // After clicking a toolbar button the toolbar has focus, so Cmd+Z lands here: pass it to the overlay.
+  addEventListener('keydown', (e) => {
+    if (!drawing) return;
+    if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); lumos.emit('draw-undo'); }
+    else if (e.key === 'Escape') setDraw(false);
   });
 
   // Keep the transparent window as small as the pill so it never blocks clicks beneath it.

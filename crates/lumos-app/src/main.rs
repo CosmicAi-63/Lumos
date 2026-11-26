@@ -148,6 +148,64 @@ async fn pick_area(app: AppHandle) -> Result<Option<Value>, String> {
     Ok(rect)
 }
 
+/// Turn the drawing overlay on or off. It is a transparent full-screen window over the main display
+/// that is recorded with the screen. Turning it off closes the window, which throws away the strokes.
+#[tauri::command]
+async fn set_draw_mode(app: AppHandle, on: bool) -> Result<(), String> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    if !on {
+        if let Some(w) = app.get_webview_window("draw") {
+            w.close().map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+    if app.get_webview_window("draw").is_some() {
+        return Ok(());
+    }
+    let monitor = app.primary_monitor().map_err(|e| e.to_string())?.ok_or("no display")?;
+    let f = monitor.scale_factor();
+    let (w, h) = (monitor.size().width as f64 / f, monitor.size().height as f64 / f);
+    let win = WebviewWindowBuilder::new(&app, "draw", WebviewUrl::App("draw.html".into()))
+        // The capture helper records Lumos windows only when they carry this title.
+        .title("Lumos Draw")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible_on_all_workspaces(true)
+        .accept_first_mouse(true)
+        .position(0.0, 0.0)
+        .inner_size(w, h)
+        .focused(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let _ = win.set_ignore_cursor_events(false);
+    let _ = win.set_focus();
+    Ok(())
+}
+
+/// Put the toolbar and face bubble one level above ordinary always-on-top windows, so the drawing
+/// overlay (and clicks on it) never cover them. Must run on the main thread.
+#[cfg(target_os = "macos")]
+fn raise_above_overlays(w: &tauri::WebviewWindow) {
+    use std::ffi::{c_char, c_void};
+    #[link(name = "objc")]
+    unsafe extern "C" {
+        fn sel_registerName(name: *const c_char) -> *const c_void;
+        fn objc_msgSend();
+    }
+    // NSFloatingWindowLevel is 3; always-on-top windows use it.
+    const ABOVE_FLOATING: isize = 4;
+    let Ok(ns) = w.ns_window() else { return };
+    // SAFETY: `ns` is this window's live NSWindow, and `setLevel:` takes one NSInteger and returns nothing.
+    unsafe {
+        let send: unsafe extern "C" fn(*mut c_void, *const c_void, isize) = std::mem::transmute(objc_msgSend as unsafe extern "C" fn());
+        send(ns, sel_registerName(c"setLevel:".as_ptr()), ABOVE_FLOATING);
+    }
+}
+
 /// Native folder chooser. `None` when the user cancels.
 #[tauri::command]
 async fn pick_folder() -> Result<Option<String>, String> {
@@ -251,7 +309,7 @@ fn main() {
 
     let built = tauri::Builder::default()
         .manage(app_state.clone())
-        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_area, pick_folder, pick_files, open_path, open_privacy_pane, quit])
+        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_area, set_draw_mode, pick_folder, pick_files, open_path, open_privacy_pane, quit])
         .setup(move |app| {
             // Lumos lives in the menu bar: no Dock icon, no Dock bounce.
             app.set_activation_policy(ActivationPolicy::Accessory);
@@ -280,6 +338,12 @@ fn main() {
                     }
                 }
             });
+            #[cfg(target_os = "macos")]
+            for label in ["toolbar", "bubble"] {
+                if let Some(w) = app.get_webview_window(label) {
+                    raise_above_overlays(&w);
+                }
+            }
             // Toolbar starts bottom-center on the main display.
             if let Some(tb) = app.get_webview_window("toolbar") {
                 if let Ok(Some(m)) = tb.primary_monitor() {

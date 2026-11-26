@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lumos Draw</title>
+  <style>
+    /* An almost-invisible fill so macOS sends clicks here instead of passing them through. */
+    html, body { margin: 0; height: 100%; overflow: hidden; background: rgba(0, 0, 0, 0.004); user-select: none; -webkit-user-select: none;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23ff3b30' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 8 8, crosshair; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="base"></canvas>
+  <canvas id="live"></canvas>
+  <script>
+    // Strokes drawn on top of the screen while recording. The window itself is what gets recorded;
+    // closing it (brush off, Esc, recording stopped) throws the strokes away.
+    const { event } = window.__TAURI__;
+    const base = document.getElementById('base'), live = document.getElementById('live');
+    const bctx = base.getContext('2d'), lctx = live.getContext('2d');
+    const COLOR = '#ff3b30', WIDTH = 5;
+    const strokes = [];
+    let cur = null;
+
+    function size() {
+      const r = devicePixelRatio || 1;
+      for (const [c, ctx] of [[base, bctx], [live, lctx]]) {
+        c.width = Math.round(innerWidth * r);
+        c.height = Math.round(innerHeight * r);
+        ctx.setTransform(r, 0, 0, r, 0, 0);
+      }
+      redraw();
+    }
+
+    // Smooth the path through the midpoints between samples so fast strokes don't look jagged.
+    function paint(ctx, pts) {
+      ctx.strokeStyle = ctx.fillStyle = COLOR;
+      ctx.lineWidth = WIDTH;
+      ctx.lineCap = ctx.lineJoin = 'round';
+      if (pts.length === 1) {
+        ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, WIDTH / 2, 0, Math.PI * 2); ctx.fill();
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      const last = pts[pts.length - 1];
+      ctx.lineTo(last.x, last.y);
+      ctx.stroke();
+    }
+
+    function redraw() {
+      bctx.clearRect(0, 0, innerWidth, innerHeight);
+      for (const s of strokes) paint(bctx, s);
+      lctx.clearRect(0, 0, innerWidth, innerHeight);
+      if (cur) paint(lctx, cur);
+    }
+
+    function undo() {
+      if (cur) { cur = null; lctx.clearRect(0, 0, innerWidth, innerHeight); return; }
+      if (strokes.pop()) redraw();
+    }
+
+    addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      live.setPointerCapture(e.pointerId);
+      cur = [{ x: e.clientX, y: e.clientY }];
+      lctx.clearRect(0, 0, innerWidth, innerHeight);
+      paint(lctx, cur);
+    });
+    addEventListener('pointermove', (e) => {
+      if (!cur) return;
+      const samples = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      for (const s of samples.length ? samples : [e]) cur.push({ x: s.clientX, y: s.clientY });
+      lctx.clearRect(0, 0, innerWidth, innerHeight);
+      paint(lctx, cur);
+    });
+    const end = () => {
+      if (!cur) return;
+      strokes.push(cur);
+      paint(bctx, cur);
+      cur = null;
+      lctx.clearRect(0, 0, innerWidth, innerHeight);
+    };
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
+
+    addEventListener('keydown', (e) => {
+      if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      else if (e.key === 'Escape') event.emit('draw-exit');
+    });
+    // Cmd+Z pressed while the toolbar has focus arrives here as an event.
+    event.listen('draw-undo', undo);
+    addEventListener('resize', size);
+    size();
+  </script>
+</body>
+</html>
