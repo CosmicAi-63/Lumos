@@ -17,6 +17,7 @@ use lumos_rpc::Dispatch;
 use lumos_rpc::paths::Paths;
 use serde_json::Value;
 use tauri::image::Image;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{ActivationPolicy, AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, PhysicalPosition, RunEvent, State};
 use tokio::sync::broadcast::error::RecvError;
@@ -26,6 +27,19 @@ static MENU_HIDDEN_AT: AtomicU64 = AtomicU64::new(0);
 /// When the popover was last shown. A menu-bar app is not active yet at that moment, so the window
 /// reports "focus lost" right away; blur events in this grace period are ignored.
 static MENU_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
+/// The library / settings window is in front. The idle toolbar steps aside while it is.
+static MAIN_FOCUSED: AtomicBool = AtomicBool::new(false);
+
+/// Tell the toolbar which Lumos windows are up, so it can decide whether to show itself while idle.
+fn windows_changed(app: &AppHandle) {
+    let visible = |label: &str| app.get_webview_window(label).and_then(|w| w.is_visible().ok()).unwrap_or(false);
+    let payload = serde_json::json!({
+        "menu": visible("menu"),
+        "notes": visible("notes"),
+        "mainFocused": MAIN_FOCUSED.load(Ordering::SeqCst) && visible("main"),
+    });
+    let _ = app.emit_to("toolbar", "windows-changed", payload);
+}
 
 fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
@@ -36,6 +50,7 @@ fn toggle_menu(app: &AppHandle, icon: tauri::Rect) {
     let Some(w) = app.get_webview_window("menu") else { return };
     if w.is_visible().unwrap_or(false) {
         let _ = w.hide();
+        windows_changed(app);
         return;
     }
     // Clicking the icon while the popover is open first takes its focus, which already closed it.
@@ -45,13 +60,26 @@ fn toggle_menu(app: &AppHandle, icon: tauri::Rect) {
     let scale = w.scale_factor().unwrap_or(2.0);
     let pos = icon.position.to_physical::<f64>(scale);
     let size = icon.size.to_physical::<f64>(scale);
-    let width = w.outer_size().map(|s| s.width as f64).unwrap_or(324.0 * scale);
+    let width = w.outer_size().map(|s| s.width as f64).unwrap_or(380.0 * scale);
     let x = (pos.x + size.width / 2.0 - width / 2.0).max(4.0 * scale);
     let y = pos.y + size.height;
     let _ = w.set_position(PhysicalPosition::new(x, y));
     MENU_SHOWN_AT.store(now_ms(), Ordering::SeqCst);
     let _ = w.show();
     let _ = w.set_focus();
+    windows_changed(app);
+}
+
+/// Show the library window on one of its tabs ("library" or "settings").
+fn open_main_tab(app: &AppHandle, tab: &str) {
+    if let Some(menu) = app.get_webview_window("menu") {
+        let _ = menu.hide();
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    let _ = app.emit("show-tab", tab);
 }
 
 /// How long quitting waits for recordings that are still being saved.
@@ -86,27 +114,51 @@ async fn call(state: State<'_, Arc<App>>, method: String, params: Option<Value>)
 fn show_window(app: AppHandle, label: String) -> Result<(), String> {
     let w = app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?;
     w.show().map_err(|e| e.to_string())?;
-    if label == "main" || label == "menu" {
+    if label == "main" || label == "menu" || label == "notes" {
         w.set_focus().map_err(|e| e.to_string())?;
+        if label == "notes" {
+            let _ = app.emit_to("notes", "window-shown", ());
+        }
     } else if let Some(menu) = app.get_webview_window("menu") {
         // Showing the bubble or toolbar must not pull focus away from an open popover.
         if menu.is_visible().unwrap_or(false) {
             let _ = menu.set_focus();
         }
     }
+    windows_changed(&app);
     Ok(())
 }
 
 #[tauri::command]
 fn hide_window(app: AppHandle, label: String) -> Result<(), String> {
-    app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?.hide().map_err(|e| e.to_string())
+    app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?.hide().map_err(|e| e.to_string())?;
+    windows_changed(&app);
+    Ok(())
 }
 
 #[tauri::command]
 fn set_window_size(app: AppHandle, label: String, width: f64, height: f64) -> Result<(), String> {
     let w = app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?;
-    w.set_size(LogicalSize::new(width.clamp(40.0, 4000.0), height.clamp(40.0, 4000.0))).map_err(|e| e.to_string())
+    // macOS keeps the bottom edge when a window resizes; keep the top edge instead, so the toolbar
+    // grows and shrinks downward without moving.
+    let top_left = w.outer_position().ok();
+    w.set_size(LogicalSize::new(width.clamp(40.0, 4000.0), height.clamp(40.0, 4000.0))).map_err(|e| e.to_string())?;
+    if let Some(p) = top_left {
+        let _ = w.set_position(p);
+    }
+    // Once, center the toolbar on the left edge of the main display, sized for its recording layout
+    // (about 340 points tall). After that it stays wherever the user drags it.
+    if label == "toolbar" && !TOOLBAR_PLACED.swap(true, Ordering::SeqCst) {
+        if let Ok(Some(m)) = w.primary_monitor() {
+            let f = m.scale_factor();
+            let h = m.size().height as f64 / f;
+            let _ = w.set_position(LogicalPosition::new(16.0, ((h - 340.0) / 2.0).max(40.0)));
+        }
+    }
+    Ok(())
 }
+
+static TOOLBAR_PLACED: AtomicBool = AtomicBool::new(false);
 
 /// Full-screen overlay where the user drags the area to record. Returns `{x,y,w,h}` in points from
 /// the top-left of the main display, or `None` if they press Esc.
@@ -314,10 +366,36 @@ fn main() {
             // Lumos lives in the menu bar: no Dock icon, no Dock bounce.
             app.set_activation_policy(ActivationPolicy::Accessory);
             let icon = Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+            // Right-click opens a short native menu; left-click keeps the popover.
+            let tray_menu = Menu::with_items(
+                app,
+                &[
+                    &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
+                    &MenuItem::with_id(app, "library", "Library", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "quit", "Quit Lumos", true, Some("CmdOrCtrl+Q"))?,
+                ],
+            )?;
             TrayIconBuilder::with_id("lumos")
                 .icon(icon)
                 .icon_as_template(true)
                 .tooltip("Lumos")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "settings" => open_main_tab(app, "settings"),
+                    "library" => open_main_tab(app, "library"),
+                    "quit" => {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let state = app.state::<Arc<App>>().inner().clone();
+                            state.quitting.store(true, Ordering::SeqCst);
+                            state.shutdown().await;
+                            app.exit(0);
+                        });
+                    }
+                    _ => {}
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } = event {
                         toggle_menu(tray.app_handle(), rect);
@@ -339,20 +417,25 @@ fn main() {
                 }
             });
             #[cfg(target_os = "macos")]
-            for label in ["toolbar", "bubble"] {
+            for label in ["toolbar", "bubble", "notes"] {
                 if let Some(w) = app.get_webview_window(label) {
                     raise_above_overlays(&w);
                 }
             }
-            // Toolbar starts bottom-center on the main display.
+            // The vertical toolbar starts on the left edge of the main display, vertically centered.
             if let Some(tb) = app.get_webview_window("toolbar") {
                 if let Ok(Some(m)) = tb.primary_monitor() {
                     let f = m.scale_factor();
-                    let (w, h) = (m.size().width as f64 / f, m.size().height as f64 / f);
-                    let _ = tb.set_position(LogicalPosition::new((w - 480.0) / 2.0, h - 150.0));
-                    // The face bubble starts bottom-left, clear of the toolbar.
+                    let h = m.size().height as f64 / f;
+                    let _ = tb.set_position(LogicalPosition::new(16.0, (h - 360.0) / 2.0));
+                    // The face bubble starts bottom-left, to the right of the toolbar.
                     if let Some(b) = app.get_webview_window("bubble") {
-                        let _ = b.set_position(LogicalPosition::new(48.0, h - 290.0));
+                        let _ = b.set_position(LogicalPosition::new(120.0, h - 290.0));
+                    }
+                    // Speaker notes start top-center, near the camera, so reading them looks like eye contact.
+                    if let Some(n) = app.get_webview_window("notes") {
+                        let w = m.size().width as f64 / f;
+                        let _ = n.set_position(LogicalPosition::new(((w - 380.0) / 2.0).max(0.0), 40.0));
                     }
                 }
             }
@@ -368,7 +451,14 @@ fn main() {
                     } else {
                         MENU_HIDDEN_AT.store(now_ms(), Ordering::SeqCst);
                         let _ = window.hide();
+                        windows_changed(window.app_handle());
                     }
+                }
+            }
+            if window.label() == "main" {
+                if let tauri::WindowEvent::Focused(f) = event {
+                    MAIN_FOCUSED.store(*f, Ordering::SeqCst);
+                    windows_changed(window.app_handle());
                 }
             }
             // Closing the library window hides it; the toolbar keeps the app alive.
@@ -376,6 +466,8 @@ fn main() {
                 if window.label() == "main" {
                     api.prevent_close();
                     let _ = window.hide();
+                    MAIN_FOCUSED.store(false, Ordering::SeqCst);
+                    windows_changed(window.app_handle());
                 }
             }
         })

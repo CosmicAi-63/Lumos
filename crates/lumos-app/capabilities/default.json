@@ -2,6 +2,18 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Lumos windows listen for engine events and drag themselves.",
-  "windows": ["toolbar", "bubble", "main", "menu", "area", "draw"],
-  "permissions": ["core:default", "core:window:allow-start-dragging"]
+  "windows": [
+    "toolbar",
+    "bubble",
+    "main",
+    "menu",
+    "area",
+    "draw",
+    "notes"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging"
+  ]
 }

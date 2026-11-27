@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lumos Notes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="notes">
+  <!-- Speaker notes: a floating card only you can see. The capture helper leaves every Lumos window
+       except the camera bubble and drawings out of recordings (ownWindows in helper.swift). -->
+  <section class="notes-card enter" id="card" aria-label="Speaker notes">
+    <header class="notes-head" data-tauri-drag-region>
+      <svg class="notes-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.38 3L6.5 3A1.5 1.5 0 0 0 5 4.5L5 19.5A1.5 1.5 0 0 0 6.5 21L17.5 21A1.5 1.5 0 0 0 19 19.5L19 9.62A1.5 1.5 0 0 0 18.56 8.56L13.44 3.44A1.5 1.5 0 0 0 12.38 3ZM13 4L13 8A1 1 0 0 0 14 9L18 9M9 13L15 13M9 17L15 17"/></svg>
+      <b data-tauri-drag-region>Notes</b>
+      <span class="notes-badge" data-tauri-drag-region title="This window never appears in your recordings"><i></i>Not recorded</span>
+      <span class="spacer" data-tauri-drag-region></span>
+      <button class="icon-btn small" id="smaller" aria-label="Smaller text" title="Smaller text"><span class="aa">A</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12L19 12"/></svg></button>
+      <button class="icon-btn small" id="larger" aria-label="Larger text" title="Larger text"><span class="aa">A</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5L12 19M5 12L19 12"/></svg></button>
+      <button class="icon-btn small" id="close" aria-label="Hide notes" title="Hide notes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6L18 18M6 18L18 6"/></svg></button>
+    </header>
+    <textarea id="text" spellcheck="true" aria-label="Your notes" placeholder="Type your talking points here. Only you can see them: they never show up in a recording."></textarea>
+    <div class="notes-grip" id="grip" aria-hidden="true"></div>
+  </section>
+  <script src="lumos.js"></script>
+  <script>
+    (() => {
+      const { lumos } = window;
+      const card = document.getElementById('card');
+      const text = document.getElementById('text');
+      const MIN = 12, MAX = 32;
+      let size = Number(localStorage.getItem('notesSize')) || 16;
+      const apply = () => { text.style.fontSize = `${size}px`; localStorage.setItem('notesSize', String(size)); };
+      text.value = localStorage.getItem('notes') || '';
+      apply();
+      // Save as you type.
+      text.addEventListener('input', () => localStorage.setItem('notes', text.value));
+      document.getElementById('smaller').addEventListener('click', () => { size = Math.max(MIN, size - 2); apply(); });
+      document.getElementById('larger').addEventListener('click', () => { size = Math.min(MAX, size + 2); apply(); });
+      document.getElementById('close').addEventListener('click', () => lumos.invoke('hide_window', { label: 'notes' }));
+      // Undecorated windows have no edges to grab, so the corner grip resizes.
+      document.getElementById('grip').addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        window.__TAURI__.window.getCurrentWindow().startResizeDragging('SouthEast').catch(() => {});
+      });
+      // Notes typed in another window (or a second copy) stay in sync.
+      window.addEventListener('storage', (e) => { if (e.key === 'notes' && document.activeElement !== text) text.value = e.newValue || ''; });
+      // Each time the window is shown (main.rs sends "window-shown"), replay the entrance and put the
+      // cursor in the text.
+      lumos.on('window-shown', () => {
+        card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter');
+        text.focus();
+      });
+    })();
+  </script>
+</body>
+</html>
