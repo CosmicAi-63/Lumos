@@ -21,6 +21,11 @@ use lumos_model::sources::{CaptureSource, Device, Display, PermissionStatus};
 pub struct SessionConfig {
     pub source: CaptureSource,
     pub fps: u32,
+    /// Scale the screen down so its short side is at most this many pixels; `None` = native.
+    pub max_short_side: Option<u32>,
+    /// Encoder bitrate overrides in kbit/s; `None` = automatic.
+    pub screen_bitrate_kbps: Option<u32>,
+    pub camera_bitrate_kbps: Option<u32>,
     /// `Some(device)` = record the camera; inner `None` = system default.
     pub camera: Option<Option<String>>,
     pub mic: Option<Option<String>>,

@@ -195,11 +195,12 @@
         <label class="f"><span>Save recordings to</span><div class="row"><input type="text" data-path="storage.saveFolder" value="${esc(s.storage.saveFolder)}"><button class="btn" data-act="choose-folder">Choose…</button></div>
           <span class="hint">${free}${health.saveFolder.writable ? '' : ' · this folder is not writable'}</span></label>
         ${text('storage.fileNameTemplate', 'File name', s.storage.fileNameTemplate, 'Use {title} and {date:%Y-%m-%d %H.%M}.')}
-        ${select('storage.keepSourceTracks', 'Keep source tracks', s.storage.keepSourceTracks, [['always', 'Always (lets you re-edit later)'], ['never', 'Never (MP4 only)']])}
+        ${select('storage.keepSourceTracks', 'Keep source tracks', s.storage.keepSourceTracks, [['never', 'Never (MP4 only, half the space)'], ['always', 'Always (lets you re-edit later)']])}
       </fieldset>
       <fieldset><legend>Recording</legend>
         ${num('recording.countdownSeconds', 'Countdown (seconds)', s.recording.countdownSeconds, 0, 10)}
         ${select('capture.fps', 'Frame rate', s.capture.fps, [[24, '24 fps'], [30, '30 fps'], [60, '60 fps']], 'number')}
+        ${select('capture.maxResolution', 'Resolution', s.capture.maxResolution, [['native', 'Native (sharpest)'], ['4k', 'Up to 4K'], ['1440p', 'Up to 1440p'], ['1080p', 'Up to 1080p (smallest files)']])}
         ${check('capture.showCursor', 'Show the cursor', s.capture.showCursor)}
       </fieldset>
       <fieldset><legend>Camera</legend>

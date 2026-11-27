@@ -137,29 +137,46 @@ pub(crate) async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput)
         bytes,
     });
     let _ = std::fs::remove_dir_all(&work);
-    // 4. If the user keeps only MP4s, drop the source tracks (nearly all of the bundle's size), but
-    //    keep the manifest and thumbnail so the recording still shows up in the library.
+
+    // 4. If the user keeps only MP4s, drop the source tracks (a second copy of the video plus the raw camera)
+    //    and point the screen track at the MP4. The small bundle left behind (manifest and thumbnail) keeps
+    //    the recording in the library, like an imported file.
     if f.keep_source_tracks == "never" {
-        remove_tracks(&bundle.join("tracks"));
-        f.manifest.tracks.clear();
+        drop_source_tracks(&bundle, &mut f.manifest, &format!("../{stem}.mp4"));
     }
     write_json_atomic(&bundle.join("manifest.json"), &f.manifest)?;
 
     // 5. Move the bundle next to the MP4.
     let dest = f.save_folder.join(format!("{stem}.lumos"));
     std::fs::rename(&bundle, &dest).map_err(|e| io_err("move", &dest, e))?;
-    let bundle_path = dest.display().to_string();
 
     Ok(RecordingReady {
         recording_id: f.id.clone(),
         output_path: output.display().to_string(),
-        bundle_path,
+        bundle_path: dest.display().to_string(),
         duration_us: f.manifest.duration_us,
     })
 }
 
-fn remove_tracks(tracks: &Path) {
-    if let Err(e) = std::fs::remove_dir_all(tracks) {
-        tracing::warn!(tracks = %tracks.display(), error = %e, "could not remove source tracks");
+fn drop_source_tracks(bundle: &Path, manifest: &mut Manifest, output_rel: &str) {
+    // A camera that was not burned in exists only as its raw track, so that one stays.
+    let keep_camera = !manifest.capture.camera_burned_in;
+    let mut kept = Vec::new();
+    for mut t in std::mem::take(&mut manifest.tracks) {
+        match t.kind {
+            TrackKind::Camera if keep_camera => kept.push(t),
+            kind => {
+                let dir = bundle.join("tracks").join(kind.dir());
+                if let Err(e) = std::fs::remove_dir_all(&dir) {
+                    tracing::warn!(tracks = %dir.display(), error = %e, "could not remove source track");
+                    kept.push(t);
+                } else if kind == TrackKind::Screen {
+                    t.files = vec![output_rel.to_owned()];
+                    kept.push(t);
+                }
+            }
+        }
     }
+    manifest.tracks = kept;
+    let _ = std::fs::remove_dir(bundle.join("tracks"));
 }

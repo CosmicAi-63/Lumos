@@ -104,7 +104,7 @@
       "default": {
         "defaultTitle": "Recording",
         "fileNameTemplate": "{title} — {date:%Y-%m-%d %H.%M}",
-        "keepSourceTracks": "always",
+        "keepSourceTracks": "never",
         "saveFolder": "~/Movies/Lumos",
         "subfolders": "none"
       }
@@ -567,7 +567,7 @@
         "keepSourceTracks": {
           "description": "`always`, `never`, or `days:N`.",
           "type": "string",
-          "default": "always"
+          "default": "never"
         },
         "saveFolder": {
           "description": "Folder new recordings are saved to. `~` expands to the home folder.",

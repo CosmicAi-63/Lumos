@@ -5,7 +5,7 @@
 //
 //   {"cmd":"permissions"}
 //   {"cmd":"devices"}
-//   {"cmd":"open","dir":"<bundle>","source":{...},"fps":30,"mic":null|{"deviceId":..},"system":bool,"camera":null|{"deviceId":..}}
+//   {"cmd":"open","dir":"<bundle>","source":{...},"fps":30,"maxShortSide":null|1080,"screenBitrate":null|bps,"cameraBitrate":null|bps,"mic":null|{"deviceId":..},"system":bool,"camera":null|{"deviceId":..}}
 //   {"cmd":"begin","index":0}
 //   {"cmd":"end"}
 //   {"cmd":"close"}
@@ -120,6 +120,8 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
     var wantMic = false
     var wantSystem = false
     var wantCamera = false
+    var screenBitrate: Int?
+    var cameraBitrate: Int?
     var stream: SCStream!
     // Window sources only: a display-wide, audio-only stream. A window filter captures just that
     // window's app, so a call or a browser playing in another app would be missing.
@@ -171,10 +173,10 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
             try FileManager.default.createDirectory(at: p.url.deletingLastPathComponent(), withIntermediateDirectories: true)
             return try TrackFile(kind: kind, rel: p.rel, url: p.url, video: video, width: w, height: h, fps: fps, channels: ch, bitrate: rate, t0: t0)
         }
-        let seg = Segment(t0: t0, screen: try file("screen", "screen", video: true, w: width, h: height, rate: bitrate(width, height, fps)))
+        let seg = Segment(t0: t0, screen: try file("screen", "screen", video: true, w: width, h: height, rate: screenBitrate ?? bitrate(width, height, fps)))
         if wantMic { seg.mic = try file("mic", "mic", video: false, ch: 1) }
         if wantSystem { seg.sys = try file("systemAudio", "system", video: false, ch: 2) }
-        if wantCamera { seg.cam = try file("camera", "camera", video: true, w: 1280, h: 720, rate: 3_000_000) }
+        if wantCamera { seg.cam = try file("camera", "camera", video: true, w: 1280, h: 720, rate: cameraBitrate ?? 1_500_000) }
         q.sync {
             current = seg
             // A still screen sends no frames; seed the segment with the last one so it never starts empty.
@@ -209,8 +211,9 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
 }
 
 func bitrate(_ w: Int, _ h: Int, _ fps: Int) -> Int {
-    // About 0.07 bits per pixel per frame, clamped: 1440p@30 is about 8 Mbit/s.
-    min(40_000_000, max(2_000_000, Int(Double(w * h * fps) * 0.07)))
+    // About 0.04 bits per pixel per frame, clamped. Screen content is mostly flat UI and text, so this keeps
+    // text clean while files stay small: 1080p30 is about 2.5 Mbit/s, a 2880×1800 Retina screen about 6.
+    min(24_000_000, max(1_500_000, Int(Double(w * h * fps) * 0.04)))
 }
 
 // MARK: - Commands
@@ -332,6 +335,10 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
     let mic = cmd["mic"] as? [String: Any]
     let camera = cmd["camera"] as? [String: Any]
     let system = cmd["system"] as? Bool ?? false
+    // Optional limits from settings: the short side in pixels (1080 for "1080p"), and bitrates in bit/s.
+    let maxShortSide = (cmd["maxShortSide"] as? Int).flatMap { $0 > 0 ? Double($0) : nil }
+    let screenBitrate = (cmd["screenBitrate"] as? Int).flatMap { $0 > 0 ? $0 : nil }
+    let cameraBitrate = (cmd["cameraBitrate"] as? Int).flatMap { $0 > 0 ? $0 : nil }
 
     if mic != nil { try await ensureAccess(.audio, "Microphone") }
     if camera != nil { try await ensureAccess(.video, "Camera") }
@@ -350,6 +357,11 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
     var hpx = (area?.height ?? info.contentRect.height) * scale
     let cap = 3840.0
     if wpx > cap { hpx *= cap / wpx; wpx = cap }
+    if let m = maxShortSide, min(wpx, hpx) > m {
+        let k = m / min(wpx, hpx)
+        wpx *= k
+        hpx *= k
+    }
 
     let s = Session(dir: dir, fps: fps)
     s.width = even(wpx)
@@ -357,6 +369,8 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
     s.wantMic = mic != nil
     s.wantSystem = system
     s.wantCamera = camera != nil
+    s.screenBitrate = screenBitrate
+    s.cameraBitrate = cameraBitrate
 
     let cfg = SCStreamConfiguration()
     cfg.width = s.width

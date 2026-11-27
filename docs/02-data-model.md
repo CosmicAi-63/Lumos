@@ -38,7 +38,7 @@ The user picks `storage.saveFolder` in Settings. A finished recording is two sib
 
 - **In progress:** files are written under `.lumos-inprogress/` *inside the save folder*, which keeps them on the same volume. On finalize, both the bundle and the MP4 are moved into place with an atomic `rename`.
 - **Name collisions:** append ` (2)`, ` (3)`, and so on.
-- **`storage.keepSourceTracks`:** `"always"` (default), `"never"` (delete the source tracks after export; the bundle keeps only `manifest.json` and `thumb.jpg`, so the recording stays in the library), or `"days:30"` (prune bundles older than N days, never the MP4).
+- **`storage.keepSourceTracks`:** `"never"` (default: after export, delete the source tracks and keep only the MP4; a small bundle with the manifest and thumbnail stays so the recording remains in the library, its screen track pointing at the MP4; a raw camera that was not burned in is kept), `"always"` (keep every source track for later re-edits, about twice the space), or `"days:30"` (prune bundles older than N days, never the MP4).
 - **`storage.subfolders`:** `"none"` (default) or `"yearMonth"` (`2026/11/…`).
 - **Changing the save folder** affects new recordings only. Old recordings stay where they are, and the library keeps every folder it has seen in `library.roots`.
 
@@ -149,7 +149,7 @@ Stored at `~/Library/Application Support/Lumos/settings.json` (Linux: `$XDG_CONF
     "saveFolder": "~/Movies/Lumos",
     "fileNameTemplate": "{title} — {date:%Y-%m-%d %H.%M}",
     "defaultTitle": "Recording",
-    "keepSourceTracks": "always",          // always | never | "days:N"
+    "keepSourceTracks": "never",           // never | always | "days:N"
     "subfolders": "none"                   // none | yearMonth
   },
   "capture": {
@@ -207,8 +207,8 @@ Stored at `~/Library/Application Support/Lumos/settings.json` (Linux: `$XDG_CONF
   },
   "advanced": {
     "encoder": "hardware",                 // hardware | software
-    "screenBitrateKbps": null,             // null = automatic (about 6000 at 1080p30, scaled by pixel count)
-    "cameraBitrateKbps": null,
+    "screenBitrateKbps": null,             // null = automatic (about 0.04 bit per pixel per frame: 2500 at 1080p30)
+    "cameraBitrateKbps": null,             // null = automatic (1500)
     "logLevel": "info"
   }
 }
