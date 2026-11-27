@@ -38,7 +38,7 @@ The user picks `storage.saveFolder` in Settings. A finished recording is two sib
 
 - **In progress:** files are written under `.lumos-inprogress/` *inside the save folder*, which keeps them on the same volume. On finalize, both the bundle and the MP4 are moved into place with an atomic `rename`.
 - **Name collisions:** append ` (2)`, ` (3)`, and so on.
-- **`storage.keepSourceTracks`:** `"always"` (default), `"never"` (delete the bundle after export and keep only the MP4), or `"days:30"` (prune bundles older than N days, never the MP4).
+- **`storage.keepSourceTracks`:** `"always"` (default), `"never"` (delete the source tracks after export; the bundle keeps only `manifest.json` and `thumb.jpg`, so the recording stays in the library), or `"days:30"` (prune bundles older than N days, never the MP4).
 - **`storage.subfolders`:** `"none"` (default) or `"yearMonth"` (`2026/11/…`).
 - **Changing the save folder** affects new recordings only. Old recordings stay where they are, and the library keeps every folder it has seen in `library.roots`.
 
@@ -171,7 +171,7 @@ Stored at `~/Library/Application Support/Lumos/settings.json` (Linux: `$XDG_CONF
   "audio": {
     "micEnabled": true, "micDeviceId": null,
     "systemAudio": false,
-    "micGainDb": 0, "systemGainDb": -6
+    "micGainDb": 0, "systemGainDb": 0
   },
   "recording": {
     "countdownSeconds": 3,

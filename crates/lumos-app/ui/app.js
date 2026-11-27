@@ -212,8 +212,10 @@
       <fieldset><legend>Audio</legend>
         ${check('audio.micEnabled', 'Record the microphone', s.audio.micEnabled)}
         ${select('audio.micDeviceId', 'Microphone', s.audio.micDeviceId, dev(mics), 'nullable')}
-        ${check('audio.systemAudio', 'Record system audio', s.audio.systemAudio, 'Needs macOS 13 or later.')}
-        ${num('audio.micGainDb', 'Microphone gain (dB)', s.audio.micGainDb, -20, 20, 0.5)}
+        ${check('audio.systemAudio', 'Record system audio', s.audio.systemAudio, 'Sound from apps on this Mac, such as a video or a call.')}
+        ${num('audio.micGainDb', 'Microphone volume (dB)', s.audio.micGainDb, -30, 6, 0.5)}
+        ${num('audio.systemGainDb', 'System audio volume (dB)', s.audio.systemGainDb, -30, 6, 0.5)}
+        <div class="hint">The microphone and system audio have separate volumes. 0 dB keeps the level as recorded; −6 dB is half as loud. You can also change them from the menu bar.</div>
         ${num('audio.syncOffsetMs', 'Audio sync adjustment (ms)', s.audio.syncOffsetMs, -500, 500, 10)}
         <div class="hint">If sound arrives before the picture, raise this (try 100). If it arrives after, lower it. Applies to new recordings.</div>
       </fieldset>

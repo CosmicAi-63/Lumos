@@ -21,7 +21,7 @@
         "micGainDb": 0.0,
         "syncOffsetMs": 0,
         "systemAudio": false,
-        "systemGainDb": -6.0
+        "systemGainDb": 0.0
       }
     },
     "automation": {
@@ -218,7 +218,7 @@
         "systemGainDb": {
           "type": "number",
           "format": "double",
-          "default": -6.0
+          "default": 0.0
         }
       },
       "additionalProperties": false

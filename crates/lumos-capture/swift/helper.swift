@@ -121,6 +121,9 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
     var wantSystem = false
     var wantCamera = false
     var stream: SCStream!
+    // Window sources only: a display-wide, audio-only stream. A window filter captures just that
+    // window's app, so a call or a browser playing in another app would be missing.
+    var audioStream: SCStream?
     var cam: AVCaptureSession?
     var current: Segment?
     var lastScreen: CMSampleBuffer?
@@ -135,6 +138,7 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
         guard sb.isValid, CMSampleBufferDataIsReady(sb) else { return }
         switch type {
         case .screen:
+            guard s === stream else { return }
             guard let att = (CMSampleBufferGetSampleAttachmentsArray(sb, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]])?.first,
                   let raw = att[.status] as? Int, SCFrameStatus(rawValue: raw) == .complete else { return }
             lastScreen = sb
@@ -200,6 +204,7 @@ final class Session: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoD
     func close() async {
         cam?.stopRunning()
         try? await stream?.stopCapture()
+        try? await audioStream?.stopCapture()
     }
 }
 
@@ -361,7 +366,9 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
     cfg.pixelFormat = kCVPixelFormatType_32BGRA
     cfg.showsCursor = true
     cfg.queueDepth = 6
-    cfg.capturesAudio = system
+    let separateAudio = system && (source["kind"] as? String) == "window"
+    cfg.capturesAudio = system && !separateAudio
+    cfg.excludesCurrentProcessAudio = true
     cfg.sampleRate = 48000
     cfg.channelCount = 2
     if mic != nil {
@@ -374,7 +381,23 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
 
     s.stream = SCStream(filter: filter, configuration: cfg, delegate: s)
     try s.stream.addStreamOutput(s, type: .screen, sampleHandlerQueue: s.q)
-    if system { try s.stream.addStreamOutput(s, type: .audio, sampleHandlerQueue: s.q) }
+    if system && !separateAudio { try s.stream.addStreamOutput(s, type: .audio, sampleHandlerQueue: s.q) }
+    if separateAudio {
+        guard let d = content.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content.displays.first else {
+            throw Fail(code: "NOT_FOUND", message: "no display to capture system audio from")
+        }
+        let acfg = SCStreamConfiguration()
+        acfg.width = 2
+        acfg.height = 2
+        acfg.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+        acfg.capturesAudio = true
+        acfg.excludesCurrentProcessAudio = true
+        acfg.sampleRate = 48000
+        acfg.channelCount = 2
+        let a = SCStream(filter: SCContentFilter(display: d, excludingApplications: [], exceptingWindows: []), configuration: acfg, delegate: s)
+        try a.addStreamOutput(s, type: .audio, sampleHandlerQueue: s.q)
+        s.audioStream = a
+    }
     if mic != nil, #available(macOS 15.0, *) { try s.stream.addStreamOutput(s, type: .microphone, sampleHandlerQueue: s.q) }
 
     var tracks: [[String: Any]] = [["kind": "screen", "codec": "h264"]]
@@ -401,7 +424,9 @@ func open(_ cmd: [String: Any]) async throws -> (Session, [String: Any]) {
 
     do {
         try await s.stream.startCapture()
+        try await s.audioStream?.startCapture()
     } catch {
+        try? await s.stream.stopCapture()
         throw Fail(code: "BACKEND_ERROR", message: "cannot start capture: \(error.localizedDescription)")
     }
     s.cam?.startRunning()

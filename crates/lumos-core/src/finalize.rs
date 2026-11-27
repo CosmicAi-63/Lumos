@@ -137,17 +137,18 @@ pub(crate) async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput)
         bytes,
     });
     let _ = std::fs::remove_dir_all(&work);
+    // 4. If the user keeps only MP4s, drop the source tracks (nearly all of the bundle's size), but
+    //    keep the manifest and thumbnail so the recording still shows up in the library.
+    if f.keep_source_tracks == "never" {
+        remove_tracks(&bundle.join("tracks"));
+        f.manifest.tracks.clear();
+    }
     write_json_atomic(&bundle.join("manifest.json"), &f.manifest)?;
 
-    // 4. Move the bundle next to the MP4, or drop it if the user keeps only MP4s.
-    let bundle_path = if f.keep_source_tracks == "never" {
-        remove_bundle(&bundle);
-        String::new()
-    } else {
-        let dest = f.save_folder.join(format!("{stem}.lumos"));
-        std::fs::rename(&bundle, &dest).map_err(|e| io_err("move", &dest, e))?;
-        dest.display().to_string()
-    };
+    // 5. Move the bundle next to the MP4.
+    let dest = f.save_folder.join(format!("{stem}.lumos"));
+    std::fs::rename(&bundle, &dest).map_err(|e| io_err("move", &dest, e))?;
+    let bundle_path = dest.display().to_string();
 
     Ok(RecordingReady {
         recording_id: f.id.clone(),
@@ -157,8 +158,8 @@ pub(crate) async fn finalize(inner: &Inner, job_id: &str, f: &mut FinalizeInput)
     })
 }
 
-fn remove_bundle(bundle: &Path) {
-    if let Err(e) = std::fs::remove_dir_all(bundle) {
-        tracing::warn!(bundle = %bundle.display(), error = %e, "could not remove source tracks");
+fn remove_tracks(tracks: &Path) {
+    if let Err(e) = std::fs::remove_dir_all(tracks) {
+        tracing::warn!(tracks = %tracks.display(), error = %e, "could not remove source tracks");
     }
 }
