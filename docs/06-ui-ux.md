@@ -125,13 +125,7 @@ A light popover that drops down from the menu-bar icon, like Loom's. Lumos has n
 
 ## Onboarding (first run)
 
-1. **Welcome.** One sentence about what Lumos does and that recordings stay on this computer.
-2. **Screen Recording.** Request it and explain that macOS may require restarting Lumos. Show the live status with a "Open System Settings" button. Tool: `permissions.request`.
-3. **Camera and Microphone.** Each can be skipped. Show the live status.
-4. **Save folder.** Default `~/Movies/Lumos`, with a "Choose…" button.
-5. **Shortcut tip,** then a "Record your first video" button.
-
-The onboarding comes back if a permission is later revoked, triggered by `permissions.changed`.
+The full plan lives in [Onboarding](09-onboarding.md): an ambient welcome screen, then permissions (with the Screen Recording relaunch handled), an ffmpeg check, the save folder, and a "Record your first video" finish. It also covers coming back when a permission is revoked.
 
 ## Global shortcuts (defaults)
 
