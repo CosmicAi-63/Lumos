@@ -1,6 +1,7 @@
-// Recording toolbar: appears only while a recording is being prepared, running or just saved.
-// State is a projection of engine events; every button is one engine tool. Starting a recording
-// happens in the menu-bar popover (menu.js).
+// Recording toolbar. While recording it is always up. While idle it comes up once you open the
+// popover or the speaker notes, and steps aside only while the library / settings window is in
+// front (or after its × button). State is a projection of engine events; every button is one
+// engine tool or window command.
 (() => {
   const { lumos } = window;
   const pill = document.getElementById('pill');
@@ -13,6 +14,8 @@
   let countdownEnd = 0;
   let timers = {};
   let shown = { toolbar: null, bubble: null };
+  let pinned = false;        // idle toolbar requested by opening the popover or the notes
+  let wins = { menu: false, notes: false, mainFocused: false };
 
   const btn = (act, label, cls = '', extra = '') => `<button class="tb ${cls}" data-act="${act}" ${extra}>${label}</button>`;
   const ibtn = (act, svg, label, cls = '') => btn(act, svg, cls, `aria-label="${label}" title="${label}"`);
@@ -27,6 +30,8 @@
     pen: svg('<path d="M11.8 3.6l2.6 2.6"/><path d="M4 14.4l.6-3.2L12.9 3a1.3 1.3 0 0 1 1.8 0l.8.8a1.3 1.3 0 0 1 0 1.8L7.2 13.8z"/><path d="M11 16.8h6"/>'),
     x: svg('<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>'),
     folder: svg('<path d="M2.8 6V14.5a1.5 1.5 0 0 0 1.5 1.5h11.4a1.5 1.5 0 0 0 1.5-1.5V8a1.5 1.5 0 0 0-1.5-1.5H10L8.4 4.5H4.3A1.5 1.5 0 0 0 2.8 6z"/>'),
+    record: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.5" fill="currentColor"/></svg>',
+    notes: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.38 3L6.5 3A1.5 1.5 0 0 0 5 4.5L5 19.5A1.5 1.5 0 0 0 6.5 21L17.5 21A1.5 1.5 0 0 0 19 19.5L19 9.62A1.5 1.5 0 0 0 18.56 8.56L13.44 3.44A1.5 1.5 0 0 0 12.38 3ZM13 4L13 8A1 1 0 0 0 14 9L18 9M9 13L15 13M9 17L15 17"/></svg>',
     library: svg('<rect x="3" y="3" width="6" height="6" rx="1.3"/><rect x="11" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="11" width="6" height="6" rx="1.3"/><rect x="11" y="11" width="6" height="6" rx="1.3"/>'),
   };
   const camOn = () => { try { return JSON.parse(localStorage.getItem('camOn') ?? 'true'); } catch (_) { return true; } };
@@ -60,6 +65,11 @@
       if (saving) html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Saving…</span>`;
       else if (saved) html += `<span class="status saved" data-tauri-drag-region>✓ Saved</span>${ibtn('reveal', icon.folder, 'Show in Finder')}${ibtn('library', icon.library, 'Open library')}${ibtn('dismiss', icon.x, 'Dismiss')}`;
       if (note) html += msg() + (saved ? '' : ibtn('dismiss', icon.x, 'Dismiss'));
+      if (!saving && !saved && !note) {
+        html += ibtn('record', icon.record, 'Start recording', 'rec');
+        html += btn('notes', icon.notes, `notes${wins.notes ? ' on' : ''}`, `aria-pressed="${wins.notes}" aria-label="Speaker notes" title="${wins.notes ? 'Hide speaker notes' : 'Speaker notes (never recorded)'}"`);
+        html += sep + ibtn('unpin', icon.x, 'Hide toolbar');
+      }
     } else if (s === 'preparing') {
       html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Getting ready…</span>` + ibtn('cancel', icon.x, 'Cancel');
     } else if (s === 'countdown') {
@@ -91,7 +101,7 @@
 
     // The toolbar and face bubble exist only while they have something to show.
     const busy = !idle || saving || !!saved || !!note;
-    setVisible('toolbar', busy);
+    setVisible('toolbar', busy || (pinned && !wins.mainFocused));
     setVisible('bubble', !idle && camOn());
     // Keep checking while a save runs, in case an event was missed.
     clearTimeout(timers.poll);
@@ -138,6 +148,15 @@
       }
     },
     dismiss() { saved = null; note = null; render(); },
+    // Same source, camera and mic the popover last used; with none yet, the Settings defaults.
+    async record() {
+      let params = {};
+      try { params = JSON.parse(localStorage.getItem('lastStart') || '{}'); } catch (_) { /* use defaults */ }
+      await lumos.invoke('hide_window', { label: 'menu' });
+      await lumos.call('recording.start', params);
+    },
+    notes: () => lumos.invoke(wins.notes ? 'hide_window' : 'show_window', { label: 'notes' }),
+    unpin() { pinned = false; render(); },
     async library() { await lumos.invoke('show_window', { label: 'main' }); lumos.emit('show-tab', 'library'); },
     async reveal() { if (saved) await lumos.call('library.reveal', { id: saved.id }); },
   };
@@ -176,6 +195,11 @@
   });
 
   lumos.on('draw-exit', () => setDraw(false));
+  lumos.on('windows-changed', (w) => {
+    if ((w.menu && !wins.menu) || (w.notes && !wins.notes)) pinned = true;
+    wins = w;
+    render();
+  });
   // After clicking a toolbar button the toolbar has focus, so Cmd+Z lands here: pass it to the overlay.
   addEventListener('keydown', (e) => {
     if (!drawing) return;

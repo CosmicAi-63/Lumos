@@ -186,7 +186,8 @@ pub async fn mix_audio(inputs: &[PathBuf], gains_db: &[f64], out: &Path) -> Resu
     }
     let mut graph = String::new();
     for (i, g) in gains_db.iter().enumerate() {
-        graph.push_str(&format!("[{i}:a]volume={g}dB[a{i}];"));
+        // Stereo out: a mono mic would otherwise fold stereo system audio down to mono.
+        graph.push_str(&format!("[{i}:a]aformat=channel_layouts=stereo,volume={g}dB[a{i}];"));
     }
     for i in 0..inputs.len() {
         graph.push_str(&format!("[a{i}]"));
