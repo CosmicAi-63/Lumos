@@ -122,7 +122,7 @@ paths ─▶ media.probe (ffprobe) ─▶ score all importers ─▶ plan ─▶
   "container": "gif",                 // mp4 | mov | webm | gif | m4a | mp3 | png | srt | vtt | txt | zip
   "video": { "codec": "gif", "maxWidth": 960, "maxHeight": null, "fps": 12, "bitrateKbps": null,
              "crf": null, "hardware": "prefer" },        // prefer | require | never
-  "audio": null,                      // or { "codec": "aac", "bitrateKbps": 160, "mix": { "micGainDb": 0, "systemGainDb": -6 } }
+  "audio": null,                      // or { "codec": "aac", "bitrateKbps": 160, "mix": { "micGainDb": 0, "systemGainDb": 0 } }
   "camera": { "layout": "asRecorded" },                  // asRecorded | hidden | corner | sideBySide | cameraOnly (recomposite only)
   "chapters": false,
   "fileNameTemplate": "{title}.gif"

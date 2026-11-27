@@ -86,8 +86,11 @@ async fn call(state: State<'_, Arc<App>>, method: String, params: Option<Value>)
 fn show_window(app: AppHandle, label: String) -> Result<(), String> {
     let w = app.get_webview_window(&label).ok_or_else(|| format!("no window '{label}'"))?;
     w.show().map_err(|e| e.to_string())?;
-    if label == "main" || label == "menu" {
+    if label == "main" || label == "menu" || label == "notes" {
         w.set_focus().map_err(|e| e.to_string())?;
+        if label == "notes" {
+            let _ = app.emit_to("notes", "window-shown", ());
+        }
     } else if let Some(menu) = app.get_webview_window("menu") {
         // Showing the bubble or toolbar must not pull focus away from an open popover.
         if menu.is_visible().unwrap_or(false) {
@@ -357,7 +360,7 @@ fn main() {
                 }
             });
             #[cfg(target_os = "macos")]
-            for label in ["toolbar", "bubble"] {
+            for label in ["toolbar", "bubble", "notes"] {
                 if let Some(w) = app.get_webview_window(label) {
                     raise_above_overlays(&w);
                 }
@@ -371,6 +374,11 @@ fn main() {
                     // The face bubble starts bottom-left, to the right of the toolbar.
                     if let Some(b) = app.get_webview_window("bubble") {
                         let _ = b.set_position(LogicalPosition::new(120.0, h - 290.0));
+                    }
+                    // Speaker notes start top-center, near the camera, so reading them looks like eye contact.
+                    if let Some(n) = app.get_webview_window("notes") {
+                        let w = m.size().width as f64 / f;
+                        let _ = n.set_position(LogicalPosition::new(((w - 380.0) / 2.0).max(0.0), 40.0));
                     }
                 }
             }

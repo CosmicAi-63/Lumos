@@ -171,7 +171,7 @@ Stored at `~/Library/Application Support/Lumos/settings.json` (Linux: `$XDG_CONF
   "audio": {
     "micEnabled": true, "micDeviceId": null,
     "systemAudio": false,
-    "micGainDb": 0, "systemGainDb": -6
+    "micGainDb": 0, "systemGainDb": 0
   },
   "recording": {
     "countdownSeconds": 3,

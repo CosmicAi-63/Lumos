@@ -45,6 +45,25 @@
         "acceptFirstMouse": true
       },
       {
+        "label": "notes",
+        "title": "Lumos Notes",
+        "url": "notes.html",
+        "contentProtected": true,
+        "width": 380,
+        "height": 300,
+        "minWidth": 260,
+        "minHeight": 160,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "resizable": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "visibleOnAllWorkspaces": true,
+        "acceptFirstMouse": true
+      },
+      {
         "label": "bubble",
         "title": "Lumos Camera",
         "url": "bubble.html",
