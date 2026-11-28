@@ -295,11 +295,24 @@
       "additionalProperties": false
     },
     "CameraShape": {
-      "type": "string",
-      "enum": [
-        "circle",
-        "roundedRect",
-        "rect"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "circle",
+            "square"
+          ]
+        },
+        {
+          "description": "Rounded square. Saved by older versions as `roundedRect`.",
+          "type": "string",
+          "const": "squircle"
+        },
+        {
+          "description": "4:3 rectangle.",
+          "type": "string",
+          "const": "rect"
+        }
       ]
     },
     "CameraSize": {

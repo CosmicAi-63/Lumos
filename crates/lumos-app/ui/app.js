@@ -206,7 +206,7 @@
       <fieldset><legend>Camera</legend>
         ${check('camera.enabled', 'Record with the camera', s.camera.enabled)}
         ${select('camera.deviceId', 'Camera', s.camera.deviceId, dev(cams), 'nullable')}
-        ${select('camera.shape', 'Bubble shape', s.camera.shape, [['circle', 'Circle'], ['roundedRect', 'Rounded'], ['rect', 'Rectangle']])}
+        ${select('camera.shape', 'Bubble shape', s.camera.shape, [['circle', 'Circle'], ['squircle', 'Squircle'], ['square', 'Square'], ['rect', 'Rectangle']])}
         ${select('camera.size', 'Bubble size', s.camera.size, [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']])}
         ${check('camera.mirror', 'Mirror the preview', s.camera.mirror)}
       </fieldset>

@@ -161,7 +161,7 @@ Stored at `~/Library/Application Support/Lumos/settings.json` (Linux: `$XDG_CONF
   },
   "camera": {
     "enabled": true, "deviceId": null,     // null = system default
-    "shape": "circle",                     // circle | roundedRect | rect
+    "shape": "circle",                     // circle | squircle | square | rect
     "size": "m",                           // s | m | l
     "position": { "anchor": "bottomLeft", "x": 0.04, "y": 0.78 },
     "mirror": true,

@@ -102,7 +102,8 @@
     // The toolbar and face bubble exist only while they have something to show.
     const busy = !idle || saving || !!saved || !!note;
     setVisible('toolbar', busy || (pinned && !wins.mainFocused));
-    setVisible('bubble', !idle && camOn());
+    // Idle, the bubble previews the camera while the toolbar is up, so its shape can be changed.
+    setVisible('bubble', camOn() && (!idle || (pinned && !wins.mainFocused)));
     // Keep checking while a save runs, in case an event was missed.
     clearTimeout(timers.poll);
     if (saving) timers.poll = setTimeout(refreshStatus, 2000);
