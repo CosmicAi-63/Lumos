@@ -262,6 +262,9 @@ pub struct RecordingSummary {
     /// A transcript exists (`transcript.get` returns it).
     #[serde(default)]
     pub has_transcript: bool,
+    /// The newest public link from `share.upload`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
@@ -531,4 +534,70 @@ pub struct ImportResult {
     /// `(path, reason)` pairs for files that could not be imported.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skipped: Option<Vec<String>>,
+}
+
+// ---- sharing ---------------------------------------------------------------
+
+/// Where shared recordings go and whether an account is connected. Never includes tokens.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareStatus {
+    /// `googleDrive`.
+    pub provider: String,
+    /// Lumos has Google credentials to sign in with (a built-in client, or a client JSON file).
+    pub configured: bool,
+    pub connected: bool,
+    /// The connected Google account, when Google reports it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account: Option<String>,
+    /// The Drive folder uploads go to.
+    pub folder_name: String,
+    /// What to do next, when not connected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ShareConnectParams {
+    /// The OAuth client JSON downloaded from Google Cloud (type "Desktop app"). Lumos copies it into its
+    /// own folder, so later sign-ins don't need it. Default: the copy saved before, then a built-in client.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_json: Option<String>,
+    /// Don't open the browser; only report the sign-in link (event `share.signInUrl`).
+    #[serde(default)]
+    pub no_browser: bool,
+    /// How long to wait for the sign-in to finish. Default 5 minutes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ShareUploadParams {
+    /// Recording id, id prefix or `last`.
+    pub id: String,
+    /// Upload again even if the recording already has a link.
+    #[serde(default)]
+    pub force: bool,
+    #[serde(default)]
+    pub wait: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareUploadResult {
+    /// Absent when the recording already had a link and `force` was not set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub job_id: Option<String>,
+    /// The public link, once known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_id: Option<String>,
+    /// True when this is a link made earlier.
+    #[serde(default)]
+    pub existing: bool,
 }

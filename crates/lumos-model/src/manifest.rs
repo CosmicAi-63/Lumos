@@ -131,6 +131,20 @@ pub struct OutputFile {
     pub bytes: u64,
 }
 
+/// A public link made by `share.upload`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareLink {
+    /// `googleDrive`.
+    pub provider: String,
+    /// The provider's id for the uploaded file.
+    pub file_id: String,
+    /// Anyone with this link can watch the video.
+    pub url: String,
+    pub created_at: String,
+    pub bytes: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Warning {
@@ -163,4 +177,7 @@ pub struct Manifest {
     pub tags: Vec<String>,
     #[serde(default)]
     pub warnings: Vec<Warning>,
+    /// Public links, newest last.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub shares: Vec<ShareLink>,
 }

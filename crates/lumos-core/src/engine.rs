@@ -50,6 +50,7 @@ pub(crate) struct Inner {
     pub jobs: Jobs,
     pub events: broadcast::Sender<Event>,
     pub recorder: tokio::sync::Mutex<Recorder>,
+    pub drive: crate::share::google::Drive,
     shutdown: Notify,
     shutting_down: AtomicBool,
 }
@@ -74,6 +75,7 @@ impl Engine {
             jobs: Jobs::new(events.clone()),
             events,
             recorder: tokio::sync::Mutex::new(Recorder::default()),
+            drive: crate::share::google::Drive::new(opts.paths.home.clone()),
             shutdown: Notify::new(),
             shutting_down: AtomicBool::new(false),
             paths: opts.paths,
@@ -148,7 +150,7 @@ impl Dispatch for Engine {
             return json(HelloResult {
                 engine_version: env!("CARGO_PKG_VERSION").into(),
                 protocol: PROTOCOL_VERSION,
-                capabilities: vec!["recording".into(), "settings".into(), "jobs".into(), "events".into()],
+                capabilities: vec!["recording".into(), "settings".into(), "jobs".into(), "events".into(), "share".into()],
             });
         }
         let client = ctx.client().ok_or_else(|| ToolError::invalid_state("call session.hello first"))?;
@@ -234,6 +236,11 @@ impl Inner {
             "export.create" => json(self.export_create(parse(params)?).await?),
             "import.formats" => json(self.import_formats()),
             "import.create" => json(self.import_create(parse(params)?).await?),
+
+            "share.status" => json(self.share_status()),
+            "share.connect" => json(self.share_connect(parse(params)?).await?),
+            "share.disconnect" => json(self.share_disconnect().await),
+            "share.upload" => json(self.share_upload(parse(params)?).await?),
 
             "settings.get" => {
                 let p: SettingsGetParams = parse(params)?;

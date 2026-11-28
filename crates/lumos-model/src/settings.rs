@@ -266,11 +266,13 @@ pub struct Automation {
     pub agent_may_start_recording: bool,
     pub agent_may_delete: bool,
     pub agent_may_snapshot_screen: bool,
+    /// Agents may upload recordings and make public links.
+    pub agent_may_share: bool,
 }
 
 impl Default for Automation {
     fn default() -> Self {
-        Self { cli_is_trusted: true, agent_may_start_recording: false, agent_may_delete: false, agent_may_snapshot_screen: false }
+        Self { cli_is_trusted: true, agent_may_start_recording: false, agent_may_delete: false, agent_may_snapshot_screen: false, agent_may_share: false }
     }
 }
 

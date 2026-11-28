@@ -26,5 +26,14 @@
     esc: (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
     errText: (e) => (e && e.message) || String(e),
     basename: (p) => String(p || '').split('/').pop(),
+    copyText: (text) => invoke('copy_text', { text }),
+    // Start making a public link. Resolves { url } when the recording already has one (copied to the
+    // clipboard), or { jobId } while it uploads; the link arrives in the `share.uploaded` event.
+    // Rejects with code AUTH_REQUIRED when Google Drive isn't connected.
+    async shareLink(id) {
+      const r = await window.lumos.call('share.upload', { id });
+      if (r.url) await window.lumos.copyText(r.url);
+      return r;
+    },
   };
 })();

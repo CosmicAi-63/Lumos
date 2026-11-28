@@ -26,3 +26,7 @@ pub const JOB_PROGRESS: &str = "job.progress";
 pub const JOB_FINISHED: &str = "job.finished";
 pub const SETTINGS_CHANGED: &str = "settings.changed";
 pub const LIBRARY_CHANGED: &str = "library.changed";
+pub const SHARE_SIGN_IN_URL: &str = "share.signInUrl";
+pub const SHARE_CONNECTED: &str = "share.connected";
+pub const SHARE_DISCONNECTED: &str = "share.disconnected";
+pub const SHARE_UPLOADED: &str = "share.uploaded";

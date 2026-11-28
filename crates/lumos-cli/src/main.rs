@@ -83,6 +83,9 @@ enum Cmd {
     /// Bring existing video files into the library.
     #[command(subcommand)]
     Import(ImportCmd),
+    /// Share recordings by link through your Google Drive.
+    #[command(subcommand)]
+    Share(ShareCmd),
     /// Run the MCP server on stdin/stdout, for AI agents (Claude, Cursor, …).
     Mcp,
     /// List every engine tool.
@@ -290,6 +293,33 @@ enum ExportCmd {
 }
 
 #[derive(Subcommand)]
+enum ShareCmd {
+    /// Whether Google Drive is connected.
+    Status,
+    /// Sign in to Google Drive in the browser.
+    Connect {
+        /// The OAuth client JSON downloaded from Google Cloud (type "Desktop app"). Needed once.
+        #[arg(long)]
+        client_json: Option<PathBuf>,
+        /// Print the sign-in link instead of opening the browser.
+        #[arg(long)]
+        no_browser: bool,
+    },
+    /// Sign out of Google Drive. Shared files stay in Drive.
+    Disconnect,
+    /// Upload a recording and print a link anyone can watch. `last` is the newest recording.
+    Upload {
+        id: String,
+        /// Upload again even if the recording already has a link.
+        #[arg(long)]
+        force: bool,
+        /// Return right away with a job id.
+        #[arg(long)]
+        no_wait: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum TranscriptCmd {
     /// Transcribe a recording locally with whisper.cpp.
     Create {
@@ -344,6 +374,8 @@ enum Plan {
     Tool(&'static str, Value),
     /// `recording.start`, then follow events until the file is saved.
     StartAndWait(Value),
+    /// `share.connect`, printing the sign-in link while it waits.
+    ShareConnect(Value),
     /// `recording.cancel` after confirmation.
     Cancel { yes: bool },
     /// A destructive tool, run after confirmation (`--yes` skips the prompt).
@@ -444,6 +476,14 @@ fn plan(cmd: Cmd) -> ToolResult<Plan> {
                 "import.create",
                 json!({ "paths": paths.iter().map(|p| abs(p)).collect::<Vec<_>>(), "title": title, "tags": tags, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS }),
             ),
+        },
+        Cmd::Share(x) => match x {
+            ShareCmd::Status => Tool("share.status", e()),
+            ShareCmd::Connect { client_json, no_browser } => {
+                Plan::ShareConnect(json!({ "clientJson": client_json.map(|p| abs(&p)), "noBrowser": no_browser }))
+            }
+            ShareCmd::Disconnect => Tool("share.disconnect", e()),
+            ShareCmd::Upload { id, force, no_wait } => Tool("share.upload", json!({ "id": id, "force": force, "wait": !no_wait, "timeoutMs": LONG_WAIT_MS })),
         },
         Cmd::Mcp => Plan::Mcp,
         Cmd::Tools => Plan::Tools,
@@ -581,6 +621,29 @@ async fn run(cli: Cli) -> ToolResult<()> {
             }
         }
         Plan::StartAndWait(params) => start_and_wait(&paths, autostart, &out, strip_nulls(params)).await,
+        Plan::ShareConnect(params) => {
+            let c = connect(&paths, autostart).await?;
+            // Subscribe first, so the sign-in link can be printed while the call waits.
+            c.call("events.subscribe", json!({ "topics": ["share."] })).await?;
+            let mut rx = c.take_events().expect("fresh client");
+            let call = c.call("share.connect", strip_nulls(params));
+            tokio::pin!(call);
+            out.note("Finish signing in to Google in your browser…");
+            loop {
+                tokio::select! {
+                    r = &mut call => {
+                        let v = r?;
+                        out.print("share.connect", &v);
+                        return Ok(());
+                    }
+                    Some(ev) = rx.recv() => {
+                        if ev.kind == "share.signInUrl" {
+                            out.note(&format!("If the browser didn't open, go to:\n{}", ev.data["url"].as_str().unwrap_or_default()));
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -844,6 +907,24 @@ impl Out {
                 Some(p) => println!("Exported {p}"),
                 None => println!("Exporting in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
             },
+            "share.status" | "share.connect" | "share.disconnect" => {
+                if v["connected"] == true {
+                    match v["account"].as_str() {
+                        Some(a) => println!("Google Drive: connected as {a}"),
+                        None => println!("Google Drive: connected"),
+                    }
+                    println!("Shared recordings go to the \"{}\" folder.", v["folderName"].as_str().unwrap_or("Lumos"));
+                } else {
+                    println!("Google Drive: not connected");
+                    if let Some(h) = v["hint"].as_str() {
+                        println!("{h}");
+                    }
+                }
+            }
+            "share.upload" => match v["url"].as_str() {
+                Some(u) => println!("{u}"),
+                None => println!("Uploading in the background (job {}).", v["jobId"].as_str().unwrap_or_default()),
+            },
             "import.formats" => {
                 for f in v.as_array().into_iter().flatten() {
                     let exts: Vec<&str> = f["extensions"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
@@ -943,6 +1024,7 @@ mod tests {
                 Plan::StopEngine => "system.shutdown",
                 Plan::Events(_) => "events.subscribe",
                 Plan::StartAndWait(_) => "recording.start",
+                Plan::ShareConnect(_) => "share.connect",
                 Plan::Tools | Plan::Mcp | Plan::Call(..) => panic!("{argv:?} is not a tool command"),
             };
             assert_eq!(name, t.name, "`{}` runs the wrong tool", argv.join(" "));

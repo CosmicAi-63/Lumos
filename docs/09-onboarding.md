@@ -9,7 +9,7 @@ The reference is Loom's first run. It opens on a calm, polished welcome screen w
 1. **Feel premium in the first 5 seconds.** Motion, sound and typography do the work. The welcome has no forms and no wall of text.
 2. **Get to a working first recording.** Done means a recording can start *and* save. That needs Screen Recording plus ffmpeg, not only permissions.
 3. **Never strand the user.** Every blocked state has one obvious next action, and quitting halfway resumes at the same step.
-4. **Respect the principles.** Nothing is uploaded, no account, no telemetry. Every button calls a tool (parity rule).
+4. **Respect the principles.** No Lumos account and no telemetry. Nothing is uploaded unless the user connects Google Drive and asks for a share link (onboarding never asks). Every button calls a tool (parity rule).
 
 ## The sequence
 

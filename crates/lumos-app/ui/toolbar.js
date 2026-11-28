@@ -16,6 +16,7 @@
   let shown = { toolbar: null, bubble: null };
   let pinned = false;        // idle toolbar requested by opening the popover or the notes
   let wins = { menu: false, notes: false, mainFocused: false };
+  let upload = null;         // { jobId, progress } while the saved recording uploads
 
   const btn = (act, label, cls = '', extra = '') => `<button class="tb ${cls}" data-act="${act}" ${extra}>${label}</button>`;
   const ibtn = (act, svg, label, cls = '') => btn(act, svg, cls, `aria-label="${label}" title="${label}"`);
@@ -32,6 +33,7 @@
     folder: svg('<path d="M2.8 6V14.5a1.5 1.5 0 0 0 1.5 1.5h11.4a1.5 1.5 0 0 0 1.5-1.5V8a1.5 1.5 0 0 0-1.5-1.5H10L8.4 4.5H4.3A1.5 1.5 0 0 0 2.8 6z"/>'),
     record: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.5" fill="currentColor"/></svg>',
     notes: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.38 3L6.5 3A1.5 1.5 0 0 0 5 4.5L5 19.5A1.5 1.5 0 0 0 6.5 21L17.5 21A1.5 1.5 0 0 0 19 19.5L19 9.62A1.5 1.5 0 0 0 18.56 8.56L13.44 3.44A1.5 1.5 0 0 0 12.38 3ZM13 4L13 8A1 1 0 0 0 14 9L18 9M9 13L15 13M9 17L15 17"/></svg>',
+    link: svg('<path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-.9.9"/><path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0l-2.6 2.6a3.2 3.2 0 0 0 4.5 4.5l.9-.9"/>'),
     library: svg('<rect x="3" y="3" width="6" height="6" rx="1.3"/><rect x="11" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="11" width="6" height="6" rx="1.3"/><rect x="11" y="11" width="6" height="6" rx="1.3"/>'),
   };
   const camOn = () => { try { return JSON.parse(localStorage.getItem('camOn') ?? 'true'); } catch (_) { return true; } };
@@ -63,7 +65,8 @@
     const msg = () => note ? `<span class="status ${note.err ? 'err' : ''}" data-tauri-drag-region>${lumos.esc(note.text)}</span>` : '';
     if (idle) {
       if (saving) html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Saving…</span>`;
-      else if (saved) html += `<span class="status saved" data-tauri-drag-region>✓ Saved</span>${ibtn('reveal', icon.folder, 'Show in Finder')}${ibtn('library', icon.library, 'Open library')}${ibtn('dismiss', icon.x, 'Dismiss')}`;
+      else if (saved && upload) html += `<span class="spin" aria-hidden="true"></span><span class="status" data-tauri-drag-region>Uploading ${Math.round(upload.progress * 100)}%</span>`;
+      else if (saved) html += `<span class="status saved" data-tauri-drag-region>✓ Saved</span>${ibtn('share', icon.link, 'Copy a share link')}${ibtn('reveal', icon.folder, 'Show in Finder')}${ibtn('library', icon.library, 'Open library')}${ibtn('dismiss', icon.x, 'Dismiss')}`;
       if (note) html += msg() + (saved ? '' : ibtn('dismiss', icon.x, 'Dismiss'));
       if (!saving && !saved && !note) {
         html += ibtn('record', icon.record, 'Start recording', 'rec');
@@ -159,7 +162,34 @@
     unpin() { pinned = false; render(); },
     async library() { await lumos.invoke('show_window', { label: 'main' }); lumos.emit('show-tab', 'library'); },
     async reveal() { if (saved) await lumos.call('library.reveal', { id: saved.id }); },
+    async share() {
+      if (!saved || upload) return;
+      clearTimeout(timers.saved);
+      try {
+        const r = await lumos.shareLink(saved.id);
+        if (r.url) { linkCopied(); return; }
+        upload = { jobId: r.jobId, progress: 0 };
+        render();
+      } catch (e) {
+        keepSaved();
+        if (e.code !== 'AUTH_REQUIRED') throw e;
+        flash('Connect Google Drive first', true, 8000);
+        await lumos.invoke('show_window', { label: 'main' });
+        lumos.emit('show-tab', 'settings');
+      }
+    },
   };
+
+  // The saved state stays up a while so its buttons can be used.
+  function keepSaved(ms = 15000) {
+    clearTimeout(timers.saved);
+    timers.saved = setTimeout(() => { saved = null; render(); }, ms);
+  }
+  function linkCopied() {
+    upload = null;
+    flash('✓ Link copied', false, 6000);
+    keepSaved(6000);
+  }
 
   pill.addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-act]');
@@ -186,8 +216,22 @@
       case 'recorder.warning': flash(ev.data.message || 'Warning', true, 8000); break;
       case 'recording.ready':
         saved = { id: ev.data.recordingId, name: lumos.basename(ev.data.outputPath), path: ev.data.outputPath };
-        clearTimeout(timers.saved); timers.saved = setTimeout(() => { saved = null; render(); }, 15000);
+        upload = null;
+        keepSaved();
         refreshStatus(); break;
+      case 'job.progress':
+        if (upload && ev.data.jobId === upload.jobId) { upload.progress = ev.data.progress; render(); }
+        break;
+      case 'share.uploaded':
+        if (upload && saved && ev.data.recordingId === saved.id) lumos.copyText(ev.data.url).then(linkCopied, (e) => flash(lumos.errText(e), true));
+        break;
+      case 'job.finished':
+        if (upload && ev.data.id === upload.jobId && ev.data.status === 'failed') {
+          upload = null;
+          flash(`Upload failed: ${(ev.data.error && ev.data.error.message) || ''}`, true, 12000);
+          keepSaved();
+        }
+        break;
       case 'recording.failed':
         flash(`Couldn't save: ${(ev.data.error && ev.data.error.message) || 'unknown error'}`, true, 12000);
         refreshStatus(); break;

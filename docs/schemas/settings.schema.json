@@ -28,6 +28,7 @@
       "$ref": "#/$defs/Automation",
       "default": {
         "agentMayDelete": false,
+        "agentMayShare": false,
         "agentMaySnapshotScreen": false,
         "agentMayStartRecording": false,
         "cliIsTrusted": true
@@ -228,6 +229,11 @@
       "type": "object",
       "properties": {
         "agentMayDelete": {
+          "type": "boolean",
+          "default": false
+        },
+        "agentMayShare": {
+          "description": "Agents may upload recordings and make public links.",
           "type": "boolean",
           "default": false
         },

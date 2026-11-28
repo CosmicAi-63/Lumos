@@ -46,12 +46,12 @@ impl Entry {
     }
 
     /// The saved video: the `default` output, else the first one.
-    fn output(&self) -> Option<PathBuf> {
+    pub(crate) fn output(&self) -> Option<PathBuf> {
         let o = self.manifest.outputs.iter().find(|o| o.preset == "default").or(self.manifest.outputs.first())?;
         Some(self.resolve(&o.path))
     }
 
-    fn summary(&self) -> RecordingSummary {
+    pub(crate) fn summary(&self) -> RecordingSummary {
         let m = &self.manifest;
         let output = self.output();
         let thumb = self.bundle.join("thumb.jpg");
@@ -72,6 +72,7 @@ impl Entry {
             thumb_path: thumb.exists().then(|| thumb.display().to_string()),
             bytes,
             has_transcript: self.bundle.join("captions").join("transcript.txt").exists(),
+            share_url: m.shares.last().map(|s| s.url.clone()),
         }
     }
 
@@ -80,7 +81,7 @@ impl Entry {
         std::fs::read_to_string(self.bundle.join("captions").join("transcript.txt")).ok().map(|t| t.to_lowercase())
     }
 
-    fn save(&self) -> ToolResult<()> {
+    pub(crate) fn save(&self) -> ToolResult<()> {
         write_json_atomic(&self.bundle.join("manifest.json"), &self.manifest)
     }
 }
@@ -119,7 +120,7 @@ pub(crate) fn scan(save: &Path) -> Vec<Entry> {
     out
 }
 
-fn find(entries: Vec<Entry>, id: &str) -> ToolResult<Entry> {
+pub(crate) fn find(entries: Vec<Entry>, id: &str) -> ToolResult<Entry> {
     if id == "last" {
         return entries.into_iter().next().ok_or_else(|| ToolError::not_found("the library is empty"));
     }
@@ -165,7 +166,7 @@ fn preset_ext(kind: &str) -> &'static str {
 
 impl Inner {
     /// With `wait`, block until the job ends (or `timeout_ms`) and return its result.
-    async fn wait_result(&self, job_id: &str, wait: bool, timeout_ms: Option<u64>) -> ToolResult<Option<Value>> {
+    pub(crate) async fn wait_result(&self, job_id: &str, wait: bool, timeout_ms: Option<u64>) -> ToolResult<Option<Value>> {
         if !wait {
             return Ok(None);
         }
@@ -182,7 +183,7 @@ impl Inner {
         expand_tilde(&self.settings().storage.save_folder)
     }
 
-    fn entries(&self) -> Vec<Entry> {
+    pub(crate) fn entries(&self) -> Vec<Entry> {
         scan(&self.save_folder())
     }
 
@@ -721,6 +722,7 @@ async fn import_one(save: &Path, path: &Path, title: Option<&str>, tags: &[Strin
         outputs: vec![OutputFile { kind: ext, preset: "default".into(), path: rel, created_at: now, bytes }],
         tags: tags.to_vec(),
         warnings: Vec::new(),
+        shares: Vec::new(),
     };
     let entry = Entry { bundle: bundle.clone(), manifest };
     entry.save().map_err(|e| e.message)?;

@@ -235,6 +235,26 @@ The 55 s default timeout stays under common MCP client limits. Agents loop on `j
 
 ---
 
+## `share.*`: public links through Google Drive
+
+Each person connects their own Google Drive. Lumos uploads only when asked, into a "Lumos" folder in that Drive, and turns on "anyone with the link can view". Lumos runs no server. Setup and design: [Sharing](10-sharing.md).
+
+| Tool | Effect | Surfaces | Params | Returns |
+|---|---|---|---|---|
+| `share.status` | R | U L A | — | `{ provider, configured, connected, account?, folderName, hint? }`. Never includes tokens. |
+| `share.connect` | M | U L | `{ clientJson?, noBrowser?, timeoutMs? }` | `ShareStatus`. Opens Google sign-in in the browser and waits (default 5 min). Emits `share.signInUrl { url }` first. |
+| `share.disconnect` | M | U L | — | `ShareStatus`. Revokes the token at Google and deletes it here. Shared files stay in Drive. |
+| `share.upload` ⏳ | M | U L A* | `{ id, force?, wait?, timeoutMs? }` | `{ jobId }` → `{ url, fileId }`. If the recording already has a link and `force` is not set: `{ url, fileId, existing: true }` with no job. |
+
+- `share.upload` is `A*`: agents need **Settings → Automation → Let AI agents share recordings by link** (`automation.agentMayShare`), because a link publishes the video.
+- Agents can never call `share.connect`. Only a person links an account.
+- The link is saved in the manifest (`shares[]`) and in `library.list` as `shareUrl`.
+- Events: `share.signInUrl`, `share.connected`, `share.disconnected`, `share.uploaded { recordingId, url, fileId, bytes }`.
+
+**Errors:** `AUTH_REQUIRED` (not connected, or the sign-in expired or was revoked: connect again), `INVALID_STATE` (no OAuth client set up, or Google rejected it), `BACKEND_ERROR` (Drive full, network, or a Workspace admin blocks public links; in that case `data.fileId` names the uploaded file).
+
+---
+
 ## `ui.*`: asks an attached UI to show something
 
 These tools exist so the CLI and agents can bring up the app. The engine forwards them to the UI as `ui.command` events. With no UI attached they return `UI_UNAVAILABLE`.
@@ -252,7 +272,6 @@ These tools exist so the CLI and agents can bring up the app. The engine forward
 | `transcript.create` ⏳ | M4 | `{ id, language?: "auto", model?: "base"\|"small"\|"medium" }`, local whisper.cpp → `captions/<lang>.vtt` and the search index |
 | `transcript.get` | M4 | `{ id, format: "vtt"\|"srt"\|"txt"\|"json" }`. The main way agents "watch" a recording. |
 | `chapters.suggest` | M4 | Built from markers, silence detection and transcript sections. Summaries are left to the MCP client's own model, so the engine needs no LLM. |
-| `share.upload` ⏳ | M6 | Opt-in upload to a self-hosted server or S3-compatible bucket, returns a URL |
 
 ## Adding a tool (checklist)
 

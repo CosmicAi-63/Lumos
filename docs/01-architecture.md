@@ -77,6 +77,7 @@ These goals lead to one long-lived **engine** that owns all capture and state. E
 | `DISK_LOW` | Free space is below `recording.minFreeDiskMB` | 9 |
 | `BACKEND_ERROR` | An OS or codec failure (`data.detail`) | 1 |
 | `CANCELLED` | A job or wait was cancelled | 130 |
+| `AUTH_REQUIRED` | A sharing account isn't connected, or its sign-in expired. Reconnect it. | 10 |
 
 ## Tool registry (the single source of truth)
 

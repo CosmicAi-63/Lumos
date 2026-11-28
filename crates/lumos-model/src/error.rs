@@ -18,6 +18,8 @@ pub enum ErrorCode {
     Cancelled,
     MethodNotFound,
     Timeout,
+    /// A sharing account is not connected, or its sign-in expired. Reconnect it.
+    AuthRequired,
 }
 
 impl ErrorCode {
@@ -35,6 +37,7 @@ impl ErrorCode {
             Self::Cancelled => "CANCELLED",
             Self::MethodNotFound => "METHOD_NOT_FOUND",
             Self::Timeout => "TIMEOUT",
+            Self::AuthRequired => "AUTH_REQUIRED",
         }
     }
 
@@ -50,6 +53,7 @@ impl ErrorCode {
             Self::DeviceBusy => 8,
             Self::DiskLow => 9,
             Self::Cancelled => 130,
+            Self::AuthRequired => 10,
             Self::BackendError | Self::Timeout => 1,
         }
     }
@@ -69,6 +73,7 @@ impl ErrorCode {
             Self::BackendError => -32008,
             Self::Cancelled => -32009,
             Self::Timeout => -32010,
+            Self::AuthRequired => -32011,
         }
     }
 }
@@ -111,6 +116,9 @@ impl ToolError {
     }
     pub fn policy(m: impl Into<String>) -> Self {
         Self::new(ErrorCode::PolicyDenied, m)
+    }
+    pub fn auth_required(m: impl Into<String>) -> Self {
+        Self::new(ErrorCode::AuthRequired, m)
     }
 }
 

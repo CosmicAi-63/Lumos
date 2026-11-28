@@ -1095,21 +1095,30 @@
         },
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "RecorderState": {
           "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
@@ -1420,21 +1429,30 @@
         },
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "RecorderState": {
           "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
@@ -1745,21 +1763,30 @@
         },
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "RecorderState": {
           "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
@@ -2199,21 +2226,30 @@
         },
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "RecorderState": {
           "description": "Recorder states. Finalize is a job, not a state: see docs/02-data-model.md.",
@@ -2724,6 +2760,13 @@
                 "null"
               ]
             },
+            "shareUrl": {
+              "description": "The newest public link from `share.upload`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "status": {
               "$ref": "#/$defs/RecordingStatus"
             },
@@ -3001,6 +3044,13 @@
               },
               "type": "array"
             },
+            "shares": {
+              "description": "Public links, newest last.",
+              "items": {
+                "$ref": "#/$defs/ShareLink"
+              },
+              "type": "array"
+            },
             "status": {
               "$ref": "#/$defs/RecordingStatus"
             },
@@ -3194,6 +3244,13 @@
                 "null"
               ]
             },
+            "shareUrl": {
+              "description": "The newest public link from `share.upload`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "status": {
               "$ref": "#/$defs/RecordingStatus"
             },
@@ -3275,6 +3332,39 @@
             "startUs",
             "endUs",
             "wallStart"
+          ],
+          "type": "object"
+        },
+        "ShareLink": {
+          "description": "A public link made by `share.upload`.",
+          "properties": {
+            "bytes": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "fileId": {
+              "description": "The provider's id for the uploaded file.",
+              "type": "string"
+            },
+            "provider": {
+              "description": "`googleDrive`.",
+              "type": "string"
+            },
+            "url": {
+              "description": "Anyone with this link can watch the video.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "fileId",
+            "url",
+            "createdAt",
+            "bytes"
           ],
           "type": "object"
         },
@@ -3456,6 +3546,13 @@
           "type": "string"
         },
         "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shareUrl": {
+          "description": "The newest public link from `share.upload`.",
           "type": [
             "string",
             "null"
@@ -3699,6 +3796,13 @@
               "type": "string"
             },
             "outputPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "shareUrl": {
+              "description": "The newest public link from `share.upload`.",
               "type": [
                 "string",
                 "null"
@@ -4141,6 +4245,13 @@
                 "null"
               ]
             },
+            "shareUrl": {
+              "description": "The newest public link from `share.upload`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "status": {
               "$ref": "#/$defs/RecordingStatus"
             },
@@ -4426,6 +4537,318 @@
   },
   {
     "cli": [
+      "share",
+      "status"
+    ],
+    "effect": "readOnly",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_share_status",
+    "name": "share.status",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Where shared recordings go and whether an account is connected. Never includes tokens.",
+      "properties": {
+        "account": {
+          "description": "The connected Google account, when Google reports it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "configured": {
+          "description": "Lumos has Google credentials to sign in with (a built-in client, or a client JSON file).",
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "folderName": {
+          "description": "The Drive folder uploads go to.",
+          "type": "string"
+        },
+        "hint": {
+          "description": "What to do next, when not connected.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "description": "`googleDrive`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "configured",
+        "connected",
+        "folderName"
+      ],
+      "title": "ShareStatus",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Whether a Google Drive account is connected for public links. Never returns tokens.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "share",
+      "connect"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": false,
+    "mcpName": "lumos_share_connect",
+    "name": "share.connect",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "clientJson": {
+          "description": "The OAuth client JSON downloaded from Google Cloud (type \"Desktop app\"). Lumos copies it into its\nown folder, so later sign-ins don't need it. Default: the copy saved before, then a built-in client.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "noBrowser": {
+          "default": false,
+          "description": "Don't open the browser; only report the sign-in link (event `share.signInUrl`).",
+          "type": "boolean"
+        },
+        "timeoutMs": {
+          "description": "How long to wait for the sign-in to finish. Default 5 minutes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "title": "ShareConnectParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Where shared recordings go and whether an account is connected. Never includes tokens.",
+      "properties": {
+        "account": {
+          "description": "The connected Google account, when Google reports it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "configured": {
+          "description": "Lumos has Google credentials to sign in with (a built-in client, or a client JSON file).",
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "folderName": {
+          "description": "The Drive folder uploads go to.",
+          "type": "string"
+        },
+        "hint": {
+          "description": "What to do next, when not connected.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "description": "`googleDrive`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "configured",
+        "connected",
+        "folderName"
+      ],
+      "title": "ShareStatus",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Sign in to Google Drive in the browser so recordings can be shared by link.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "share",
+      "disconnect"
+    ],
+    "effect": "mutating",
+    "idempotent": true,
+    "longRunning": false,
+    "mcpName": "lumos_share_disconnect",
+    "name": "share.disconnect",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "title": "Empty",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Where shared recordings go and whether an account is connected. Never includes tokens.",
+      "properties": {
+        "account": {
+          "description": "The connected Google account, when Google reports it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "configured": {
+          "description": "Lumos has Google credentials to sign in with (a built-in client, or a client JSON file).",
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "folderName": {
+          "description": "The Drive folder uploads go to.",
+          "type": "string"
+        },
+        "hint": {
+          "description": "What to do next, when not connected.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "description": "`googleDrive`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "configured",
+        "connected",
+        "folderName"
+      ],
+      "title": "ShareStatus",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Sign out of Google Drive. Files already shared stay in Drive.",
+    "surfaces": {
+      "agent": false,
+      "agentOptIn": false,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
+      "share",
+      "upload"
+    ],
+    "effect": "mutating",
+    "idempotent": false,
+    "longRunning": true,
+    "mcpName": "lumos_share_upload",
+    "name": "share.upload",
+    "params": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "default": false,
+          "description": "Upload again even if the recording already has a link.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "Recording id, id prefix or `last`.",
+          "type": "string"
+        },
+        "timeoutMs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wait": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ShareUploadParams",
+      "type": "object"
+    },
+    "result": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "existing": {
+          "default": false,
+          "description": "True when this is a link made earlier.",
+          "type": "boolean"
+        },
+        "fileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jobId": {
+          "description": "Absent when the recording already had a link and `force` was not set.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The public link, once known.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "ShareUploadResult",
+      "type": "object"
+    },
+    "states": null,
+    "summary": "Upload a recording to Google Drive and make a link anyone can watch (job). `wait` blocks until done.",
+    "surfaces": {
+      "agent": true,
+      "agentOptIn": true,
+      "cli": true,
+      "ui": true
+    }
+  },
+  {
+    "cli": [
       "jobs",
       "ls"
     ],
@@ -4454,21 +4877,30 @@
       "$defs": {
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "Job": {
           "properties": {
@@ -4536,7 +4968,8 @@
             "thumbnail",
             "transcribe",
             "reindex",
-            "recover"
+            "recover",
+            "upload"
           ],
           "type": "string"
         },
@@ -4612,21 +5045,30 @@
       "$defs": {
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "JobKind": {
           "enum": [
@@ -4636,7 +5078,8 @@
             "thumbnail",
             "transcribe",
             "reindex",
-            "recover"
+            "recover",
+            "upload"
           ],
           "type": "string"
         },
@@ -4773,21 +5216,30 @@
       "$defs": {
         "ErrorCode": {
           "description": "Stable error codes. The string form is the contract; see docs/01-architecture.md.",
-          "enum": [
-            "INVALID_PARAMS",
-            "INVALID_STATE",
-            "PERMISSION_DENIED",
-            "NOT_FOUND",
-            "POLICY_DENIED",
-            "ENGINE_UNAVAILABLE",
-            "DEVICE_BUSY",
-            "DISK_LOW",
-            "BACKEND_ERROR",
-            "CANCELLED",
-            "METHOD_NOT_FOUND",
-            "TIMEOUT"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "INVALID_PARAMS",
+                "INVALID_STATE",
+                "PERMISSION_DENIED",
+                "NOT_FOUND",
+                "POLICY_DENIED",
+                "ENGINE_UNAVAILABLE",
+                "DEVICE_BUSY",
+                "DISK_LOW",
+                "BACKEND_ERROR",
+                "CANCELLED",
+                "METHOD_NOT_FOUND",
+                "TIMEOUT"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "AUTH_REQUIRED",
+              "description": "A sharing account is not connected, or its sign-in expired. Reconnect it.",
+              "type": "string"
+            }
+          ]
         },
         "JobKind": {
           "enum": [
@@ -4797,7 +5249,8 @@
             "thumbnail",
             "transcribe",
             "reindex",
-            "recover"
+            "recover",
+            "upload"
           ],
           "type": "string"
         },

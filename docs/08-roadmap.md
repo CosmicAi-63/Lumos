@@ -101,7 +101,9 @@ Capture backends behind the same traits, using the encoders from the [pipeline p
 
 ## M6: Optional sharing (off by default)
 
-`share.upload` to a self-hostable Lumos share server (a small server with a viewer page) or any S3-compatible bucket. It returns a link. There's no hosted service unless the project later decides to run one.
+**Started: Google Drive.** `share.upload` puts a recording in the user's own Google Drive and returns a link anyone can watch, like a Loom link. Each user brings their own storage, so Lumos runs no server and pays for nothing. See [Sharing](10-sharing.md).
+
+Still to do: publish the Google OAuth app (its sign-ins expire after 7 days while it is in testing mode), build its client id into release builds, and keep tokens in the Keychain once builds are signed. Later providers (a self-hostable Lumos share server with its own viewer page, or any S3-compatible bucket) slot in behind the same `share.*` tools.
 
 ## Later ideas
 
@@ -119,7 +121,7 @@ Drawing on screen while recording, zoom to cursor, a teleprompter, noise suppres
 | 4 | **Platform order** | macOS → Windows → Linux | macOS has the best capture API and is where the project starts |
 | 5 | **Minimum macOS** | 13 Ventura, if the M0 spike confirms system audio there. Otherwise 14. | Sets which APIs are available |
 | 6 | **Camera default** | Burn-in, keep the raw track (see the pipeline doc) | Instant files versus layout flexibility |
-| 7 | **Sharing/cloud** | Out of scope until M6, and self-host only | Shapes privacy promises and the cost of running anything |
+| 7 | **Sharing/cloud** | **Decided: the user's own Google Drive first.** Off until the user connects it, and nothing uploads until they ask for a link. No Lumos-run server. | Shapes privacy promises and the cost of running anything |
 | 8 | **Loom import** | Treat Loom downloads as plain MP4. Get a real Loom export before building anything Loom-specific. | Avoids guessing an undocumented format |
 | 9 | **Is the CLI trusted?** | `automation.cliIsTrusted` defaults to `true`. An agent with shell access (Claude Code, for example) could then run `lumos record start` and skip `agentMayStartRecording`. The alternative default, `false`, would make every terminal user enable it once. | The trade-off is between agent-friendliness and the "agents need permission to record" promise |
 

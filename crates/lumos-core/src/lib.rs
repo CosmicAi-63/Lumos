@@ -11,6 +11,7 @@ mod library;
 mod policy;
 mod recorder;
 mod settings;
+mod share;
 
 pub use engine::{Engine, EngineOptions};
 pub use fsutil::expand_tilde;

@@ -33,6 +33,7 @@ pub fn check(tool: &ToolDef, client: &ClientInfo, automation: &Automation, param
             "recording.start" | "recording.resume" => automation.agent_may_start_recording,
             "library.delete" => automation.agent_may_delete,
             "system.snapshot" => automation.agent_may_snapshot_screen,
+            "share.upload" => automation.agent_may_share,
             _ => false,
         };
         if !ok {
@@ -73,6 +74,18 @@ mod tests {
         assert!(check(start, &client(ClientKind::Cli), &a, &json!({})).is_err());
         a.agent_may_start_recording = true;
         assert!(check(start, &client(ClientKind::Mcp), &a, &json!({})).is_ok());
+    }
+
+    #[test]
+    fn agents_need_opt_in_to_share_and_never_connect() {
+        let upload = lumos_tools::find("share.upload").unwrap();
+        let mut a = Automation::default();
+        assert!(check(upload, &client(ClientKind::Mcp), &a, &json!({})).is_err());
+        assert!(check(upload, &client(ClientKind::Ui), &a, &json!({})).is_ok());
+        a.agent_may_share = true;
+        assert!(check(upload, &client(ClientKind::Mcp), &a, &json!({})).is_ok());
+        let connect = lumos_tools::find("share.connect").unwrap();
+        assert!(check(connect, &client(ClientKind::Mcp), &a, &json!({})).is_err());
     }
 
     #[test]

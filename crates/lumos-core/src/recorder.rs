@@ -261,6 +261,7 @@ impl Inner {
             outputs: Vec::new(),
             tags: Vec::new(),
             warnings: Vec::new(),
+            shares: Vec::new(),
         };
         let mut active = Active {
             id: id.clone(),

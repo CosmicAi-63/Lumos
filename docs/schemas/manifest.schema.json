@@ -49,6 +49,13 @@
         "$ref": "#/$defs/Segment"
       }
     },
+    "shares": {
+      "description": "Public links, newest last.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ShareLink"
+      }
+    },
     "status": {
       "$ref": "#/$defs/RecordingStatus"
     },
@@ -395,6 +402,39 @@
         "startUs",
         "endUs",
         "wallStart"
+      ]
+    },
+    "ShareLink": {
+      "description": "A public link made by `share.upload`.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "fileId": {
+          "description": "The provider's id for the uploaded file.",
+          "type": "string"
+        },
+        "provider": {
+          "description": "`googleDrive`.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Anyone with this link can watch the video.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "fileId",
+        "url",
+        "createdAt",
+        "bytes"
       ]
     },
     "Track": {

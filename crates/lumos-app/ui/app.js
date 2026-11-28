@@ -6,6 +6,7 @@
   const search = document.getElementById('search');
   let tab = 'library';
   let presets = [];
+  const uploads = new Map(); // jobId -> recording id, for uploads started in this window
 
   function toast(text, err = false, ms = 4000) {
     const t = document.getElementById('toast');
@@ -60,12 +61,21 @@
       <div class="meta"><div class="title" title="${esc(r.title)}">${esc(r.title)}</div>
         <div class="sub">${esc(date)} · ${lumos.fmtBytes(r.bytes)}${imported}</div>${tags}</div>
       <div class="actions">
+        ${shareButton(r)}
         <button class="btn small" data-act="reveal">Show in Finder</button>
         <button class="btn small" data-act="rename">Rename</button>
         <button class="btn small" data-act="transcript">${r.hasTranscript ? 'Transcript' : 'Transcribe'}</button>
         <select class="btn small" data-act="export" aria-label="Export ${esc(r.title)}"><option value="">Export…</option>${opts}</select>
         <button class="btn small danger" data-act="delete">Delete</button>
       </div></article>`;
+  }
+
+  function shareButton(r) {
+    const busy = [...uploads.values()].includes(r.id);
+    if (busy) return '<button class="btn small" disabled>Uploading…</button>';
+    return r.shareUrl
+      ? `<button class="btn small" data-act="copylink" title="${esc(r.shareUrl)}">Copy link</button>`
+      : '<button class="btn small" data-act="share" title="Upload to your Google Drive and copy a link anyone can watch">Share link</button>';
   }
 
   function openPlayer(r) {
@@ -135,6 +145,24 @@
       await lumos.call('library.delete', { id, confirm: true });
       toast('Moved to the Trash');
     },
+    async share(el, id) {
+      try {
+        const r = await lumos.shareLink(id);
+        if (r.url) { toast('Link copied'); return; }
+        uploads.set(r.jobId, id);
+        toast('Uploading to Google Drive…', false, 600000);
+        render();
+      } catch (e) {
+        if (e.code !== 'AUTH_REQUIRED') throw e;
+        toast('Connect Google Drive first', true, 6000);
+        setTab('settings');
+      }
+    },
+    async copylink(el, id) {
+      const d = await lumos.call('library.get', { id });
+      await lumos.copyText(d.summary.shareUrl);
+      toast('Link copied');
+    },
     async recover() {
       toast('Recovering…', false, 60000);
       await lumos.call('library.recover', {});
@@ -172,11 +200,12 @@
   const select = (path, label, v, options, type = '') => `<label class="f"><span>${label}</span><select data-path="${path}" ${type ? `data-type="${type}"` : ''}>${options.map(([val, name]) => `<option value="${esc(val)}" ${String(val) === String(v ?? '') ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select></label>`;
 
   async function renderSettings() {
-    const [s, health, cams, mics] = await Promise.all([
+    const [s, health, cams, mics, share] = await Promise.all([
       lumos.call('settings.get'),
       lumos.call('system.health'),
       lumos.call('sources.cameras').catch(() => []),
       lumos.call('sources.microphones').catch(() => []),
+      lumos.call('share.status').catch(() => null),
     ]);
     const dev = (list) => [['', 'System default'], ...list.map((d) => [d.id, d.name])];
     const mcp = JSON.stringify({ mcpServers: { lumos: { command: 'lumos', args: ['mcp'] } } }, null, 2);
@@ -224,9 +253,11 @@
         <label class="f"><span>Whisper model file</span><input type="text" data-path="advanced.whisperModelPath" data-type="nullable" placeholder="/path/to/ggml-medium.bin" value="${esc(s.advanced.whisperModelPath ?? '')}">
           <span class="hint">A whisper.cpp <code>ggml-*.bin</code> model. Needed for the Transcribe button. Transcription runs on this Mac.</span></label>
       </fieldset>
+      ${sharingFields(share)}
       <fieldset><legend>AI agents and automation</legend>
         ${check('automation.agentMayStartRecording', 'Let AI agents start recordings', s.automation.agentMayStartRecording, 'A visible indicator always shows while recording, and agents get a countdown of at least 3 seconds.')}
         ${check('automation.agentMayDelete', 'Let AI agents delete recordings', s.automation.agentMayDelete, 'Deleted recordings go to the Trash.')}
+        ${check('automation.agentMayShare', 'Let AI agents share recordings by link', s.automation.agentMayShare, 'Agents can upload to your Google Drive and make links anyone can open.')}
         ${check('automation.cliIsTrusted', 'Treat the command line as you', s.automation.cliIsTrusted, 'Off: a program running <code>lumos</code> gets the same limits as an AI agent.')}
         <div><div class="hint" style="margin-bottom:6px">Add this to Claude, Cursor or any MCP client:</div><pre class="code" id="mcp">${esc(mcp)}</pre>
         <button class="btn small" data-act="copy-mcp" style="margin-top:6px">Copy</button></div>
@@ -236,6 +267,30 @@
         <ul class="health">${perms}</ul>${paneHint}
         <ul class="health">${problems}</ul>
       </fieldset></div>`;
+  }
+
+  function sharingFields(share) {
+    if (!share) return '';
+    let body;
+    if (share.connected) {
+      body = `<div>Google Drive: <b>connected${share.account ? ` as ${esc(share.account)}` : ''}</b></div>
+        <div class="hint">Share link uploads a recording to the “${esc(share.folderName)}” folder in your Drive and copies a link anyone can watch. Nothing uploads until you ask.</div>
+        <div><button class="btn small" data-act="share-disconnect">Disconnect</button></div>`;
+    } else if (share.configured) {
+      body = `<div class="hint">Connect your Google Drive to share recordings by link. Videos are stored in your Drive, not on a Lumos server.</div>
+        <div><button class="btn" data-act="share-connect">Connect Google Drive…</button></div>`;
+    } else {
+      body = `<div class="hint">To share by link, Lumos needs a Google OAuth client file (type “Desktop app”) from Google Cloud. Choose the downloaded <code>client_secret_….json</code> and you'll sign in to Google next.</div>
+        <div><button class="btn" data-act="share-client">Choose client file…</button></div>`;
+    }
+    return `<fieldset><legend>Sharing</legend>${body}</fieldset>`;
+  }
+
+  async function connectDrive(clientJson) {
+    toast('Finish signing in to Google in your browser…', false, 300000);
+    const st = await lumos.call('share.connect', clientJson ? { clientJson } : {});
+    toast(st.account ? `Connected as ${st.account}` : 'Google Drive connected');
+    renderSettings();
   }
 
   view.addEventListener('change', async (ev) => {
@@ -260,6 +315,15 @@
         toast('Saved'); renderSettings();
       } else if (el.dataset.act === 'open-pane') {
         await lumos.invoke('open_privacy_pane', { kind: el.dataset.kind });
+      } else if (el.dataset.act === 'share-client') {
+        const file = await lumos.invoke('pick_json');
+        if (file) await connectDrive(file);
+      } else if (el.dataset.act === 'share-connect') {
+        await connectDrive();
+      } else if (el.dataset.act === 'share-disconnect') {
+        await lumos.call('share.disconnect');
+        toast('Disconnected. Shared files stay in your Drive.');
+        renderSettings();
       } else if (el.dataset.act === 'copy-mcp') {
         await navigator.clipboard.writeText(document.getElementById('mcp').textContent);
         toast('Copied');
@@ -282,8 +346,15 @@
   lumos.on('show-tab', (name) => setTab(name === 'settings' ? 'settings' : 'library'));
   lumos.onEvent((ev) => {
     if (ev.type === 'job.finished' && ev.data.status === 'failed') {
-      toast(`${ev.data.kind} failed: ${(ev.data.error && ev.data.error.message) || ''}`, true, 8000);
+      const what = ev.data.kind === 'upload' ? 'Upload' : ev.data.kind;
+      toast(`${what} failed: ${(ev.data.error && ev.data.error.message) || ''}`, true, 8000);
     }
+    if (ev.type === 'job.finished' && uploads.has(ev.data.id)) { uploads.delete(ev.data.id); if (tab === 'library') render(); }
+    if (ev.type === 'job.progress' && uploads.has(ev.data.jobId)) toast(`Uploading to Google Drive… ${Math.round(ev.data.progress * 100)}%`, false, 600000);
+    if (ev.type === 'share.uploaded' && [...uploads.values()].includes(ev.data.recordingId)) {
+      lumos.copyText(ev.data.url).then(() => toast('Uploaded. Link copied'), fail);
+    }
+    if (ev.type === 'share.connected' || ev.type === 'share.disconnected') { if (tab === 'settings') renderSettings(); }
     if (tab !== 'library') return;
     if (['recording.ready', 'library.deleted', 'library.imported', 'library.changed'].includes(ev.type)) render();
     if (ev.type === 'transcribe.finished') { toast('Transcript ready'); render(); }

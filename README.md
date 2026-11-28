@@ -2,7 +2,7 @@
 
 An open-source, local-first screen and camera recorder in the spirit of Loom.
 
-Pick a screen, window or area, and record it with your mic, system audio and a camera bubble. When you stop, an MP4 lands in your folder. No account, no cloud, no telemetry.
+Pick a screen, window or area, and record it with your mic, system audio and a camera bubble. When you stop, an MP4 lands in your folder. No Lumos account, no Lumos cloud, no telemetry. To share a recording by link, connect your own Google Drive ([Sharing](docs/10-sharing.md)).
 
 **[⬇ Download for Mac (Apple Silicon)](https://github.com/CosmicAi-63/Lumos/releases/latest/download/Lumos-macos-arm64.dmg)** · [All releases](https://github.com/CosmicAi-63/Lumos/releases)
 
@@ -115,6 +115,8 @@ git tag v0.1.0 && git push origin v0.1.0
 | 6 | [UI/UX](docs/06-ui-ux.md) | Toolbar, camera bubble, pickers, library, settings, onboarding, shortcuts |
 | 7 | [Import and export](docs/07-import-export.md) | Importer interface, format matrix, export presets, non-destructive edits |
 | 8 | [Roadmap](docs/08-roadmap.md) | Milestones with exit criteria, open decisions, risks |
+| 9 | [Onboarding](docs/09-onboarding.md) | First-run welcome, permissions, ffmpeg and save folder (plan) |
+| 10 | [Sharing](docs/10-sharing.md) | Share links through your own Google Drive: setup, sign-in, uploads, privacy |
 
 ## License
 

@@ -279,6 +279,26 @@ async fn pick_files() -> Result<Vec<String>, String> {
     Ok(osascript(&script).await?.map(|s| s.lines().map(str::to_owned).filter(|l| !l.is_empty()).collect()).unwrap_or_default())
 }
 
+/// Native file chooser for the Google OAuth client JSON (Settings → Sharing).
+#[tauri::command]
+async fn pick_json() -> Result<Option<String>, String> {
+    let out = osascript(&["POSIX path of (choose file with prompt \"Choose the Google OAuth client file (client_secret_….json)\" of type {\"public.json\"})"]).await?;
+    Ok(out.filter(|s| !s.is_empty()))
+}
+
+/// Put text on the clipboard. Done here because the webview loses clipboard access once a long
+/// upload has outlived the click that started it.
+#[tauri::command]
+async fn copy_text(text: String) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let mut child = tokio::process::Command::new("pbcopy").stdin(std::process::Stdio::piped()).spawn().map_err(|e| format!("pbcopy: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(text.as_bytes()).await.map_err(|e| format!("pbcopy: {e}"))?;
+    }
+    let status = child.wait().await.map_err(|e| format!("pbcopy: {e}"))?;
+    if status.success() { Ok(()) } else { Err("couldn't copy to the clipboard".into()) }
+}
+
 /// Open a file with its default app (the video player).
 #[tauri::command]
 fn open_path(path: String) -> Result<(), String> {
@@ -361,7 +381,7 @@ fn main() {
 
     let built = tauri::Builder::default()
         .manage(app_state.clone())
-        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_area, set_draw_mode, pick_folder, pick_files, open_path, open_privacy_pane, quit])
+        .invoke_handler(tauri::generate_handler![call, show_window, hide_window, set_window_size, pick_area, set_draw_mode, pick_folder, pick_files, pick_json, copy_text, open_path, open_privacy_pane, quit])
         .setup(move |app| {
             // Lumos lives in the menu bar: no Dock icon, no Dock bounce.
             app.set_activation_policy(ActivationPolicy::Accessory);

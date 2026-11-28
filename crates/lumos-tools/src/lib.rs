@@ -165,6 +165,11 @@ fn build() -> Vec<ToolDef> {
         tool!("transcript.create", "Transcribe a recording locally with whisper.cpp (job). `wait` blocks until done.", TranscriptCreateParams => TranscriptCreateResult, Mutating, ALL, None, ["transcript", "create"], long),
         tool!("transcript.get", "Read a recording's transcript as txt, srt or vtt. How an agent reads what was said.", TranscriptGetParams => TranscriptGetResult, ReadOnly, ALL, None, ["transcript", "get"]),
         tool!("chapters.suggest", "Suggest chapters from markers and long pauses in the transcript. Summaries are left to the client.", RecordingIdParams => ChaptersResult, ReadOnly, ALL, None, ["chapters"]),
+        // sharing
+        tool!("share.status", "Whether a Google Drive account is connected for public links. Never returns tokens.", Empty => ShareStatus, ReadOnly, ALL, None, ["share", "status"]),
+        tool!("share.connect", "Sign in to Google Drive in the browser so recordings can be shared by link.", ShareConnectParams => ShareStatus, Mutating, HUMAN, None, ["share", "connect"]),
+        tool!("share.disconnect", "Sign out of Google Drive. Files already shared stay in Drive.", Empty => ShareStatus, Mutating, HUMAN, None, ["share", "disconnect"], idem),
+        tool!("share.upload", "Upload a recording to Google Drive and make a link anyone can watch (job). `wait` blocks until done.", ShareUploadParams => ShareUploadResult, Mutating, ALL_OPT_IN, None, ["share", "upload"], long),
         // jobs
         tool!("jobs.list", "Recent jobs, newest first.", JobListParams => Vec<Job>, ReadOnly, ALL, None, ["jobs", "ls"]),
         tool!("jobs.get", "Status, progress and result of one background job (save, export, import).", JobIdParams => Job, ReadOnly, ALL, None, ["jobs", "show"]),
@@ -214,8 +219,8 @@ mod tests {
     }
 
     #[test]
-    fn capture_tools_that_start_capture_need_opt_in() {
-        for name in ["recording.start", "recording.resume"] {
+    fn tools_that_capture_or_publish_need_opt_in() {
+        for name in ["recording.start", "recording.resume", "share.upload"] {
             assert!(find(name).unwrap().surfaces.agent_opt_in, "{name}");
         }
     }
