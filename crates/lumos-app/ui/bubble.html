@@ -9,20 +9,101 @@
   <div class="bubble-frame circle mirror" id="frame" data-tauri-drag-region>
     <span id="msg" data-tauri-drag-region>Starting camera…</span>
   </div>
+  <div class="bubble-tools" id="tools" role="toolbar" aria-label="Camera style" data-tauri-drag-region></div>
   <script src="lumos.js"></script>
   <script>
     // The face bubble is an ordinary on-screen window, so it is recorded with the screen.
     const frame = document.getElementById('frame');
     let stream = null;
 
+    const tools = document.getElementById('tools');
+    const ic = (body) => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+    const SHAPES = [
+      ['squircle', 'Squircle', ic('<rect x="2.5" y="2.5" width="11" height="11" rx="4"/>')],
+      ['circle', 'Circle', ic('<circle cx="8" cy="8" r="5.5"/>')],
+      ['square', 'Square', ic('<rect x="2.5" y="2.5" width="11" height="11" rx="1"/>')],
+      ['rect', 'Rectangle', ic('<rect x="1.5" y="3.5" width="13" height="9" rx="1"/>')],
+    ];
+    const FLIP = ic('<path d="M8 2v12"/><path d="M5.5 5L2 8l3.5 3z"/><path d="M10.5 5L14 8l-3.5 3z"/>');
+    const CLOSE = ic('<path d="M4 4l8 8M12 4l-8 8"/>');
+    const OPEN = ic('<path d="M3 5.5h10M3 10.5h10"/><circle cx="6" cy="5.5" r="1.4" fill="currentColor"/><circle cx="10.5" cy="10.5" r="1.4" fill="currentColor"/>');
+    const btn = (attr, label, svg) => `<button ${attr} title="${label}" aria-label="${label}">${svg}</button>`;
+    const gap = '<span class="gap" data-tauri-drag-region></span>';
+    const PAD = 10;          // matches the body padding; room for the squish animation
+    const BAR_GAP = 8;       // between the shape and the bar
+
+    let cam = { shape: 'circle', mirror: true, size: 'm' };
+    let recording = false;   // the style bar is only for when nothing is being recorded
+    let collapsed = localStorage.getItem('bubbleToolsCollapsed') === '1';
+
+    function renderTools() {
+      tools.hidden = recording;
+      tools.innerHTML = collapsed
+        ? btn('data-expand', 'Camera style', OPEN)
+        : btn('data-collapse', 'Close', CLOSE) + gap
+          + SHAPES.map(([id, label, svg]) => btn(`data-shape="${id}"`, label, svg)).join('')
+          + gap + btn('data-flip', 'Flip camera', FLIP);
+      tools.querySelectorAll('[data-shape]').forEach((b) => b.classList.toggle('sel', b.dataset.shape === cam.shape));
+    }
+
+    let sized = null;        // last window size sent
+    let shrinkTimer = null;
+    let prevShape = null;
+    const setWindow = (width, height) => lumos.invoke('set_window_size', { label: 'bubble', width, height }).catch(() => {});
+
+    // Lay out the frame and bar in the window; macOS keeps the top edge, so the bubble stays put.
+    function layout() {
+      const shape = ['circle', 'squircle', 'square', 'rect'].includes(cam.shape) ? cam.shape : 'circle';
+      cam.shape = shape;
+      frame.className = `bubble-frame ${shape}${cam.mirror ? ' mirror' : ''}${prevShape ? ' ready' : ''}`;
+      const px = { s: 140, m: 200, l: 280 }[cam.size] || 200;
+      const h = shape === 'rect' ? Math.round(px * 0.75) : px;
+      frame.style.width = `${px}px`;
+      frame.style.height = `${h}px`;
+      renderTools();
+      // Centre the bar beside the bubble.
+      const barW = recording ? 0 : tools.offsetWidth + BAR_GAP;
+      const barH = recording ? 0 : tools.offsetHeight;
+      tools.style.marginTop = `${Math.max(0, Math.round((h - barH) / 2))}px`;
+      const w = PAD * 2 + px + barW;
+      const ht = PAD * 2 + Math.max(h, barH);
+      if (prevShape && prevShape !== shape) {
+        // Squish like jelly; the frame animates, so keep the window big enough until it settles.
+        frame.classList.remove('goo'); void frame.offsetWidth; frame.classList.add('goo');
+      }
+      prevShape = shape;
+      clearTimeout(shrinkTimer);
+      if (sized && (w < sized[0] || ht < sized[1])) {
+        setWindow(Math.max(w, sized[0]), Math.max(ht, sized[1]));
+        shrinkTimer = setTimeout(() => { sized = [w, ht]; setWindow(w, ht); }, 700);
+        sized = [Math.max(w, sized[0]), Math.max(ht, sized[1])];
+      } else {
+        sized = [w, ht];
+        setWindow(w, ht);
+      }
+    }
+
     async function applySettings() {
-      try {
-        const cam = await lumos.call('settings.get', { path: 'camera' });
-        // Always a plain circle, like Loom: no outline, no square.
-        frame.className = `bubble-frame circle${cam.mirror ? ' mirror' : ''}`;
-        const px = { s: 140, m: 200, l: 280 }[cam.size] || 200;
-        await lumos.invoke('set_window_size', { label: 'bubble', width: px, height: px });
-      } catch (_) {}
+      try { cam = await lumos.call('settings.get', { path: 'camera' }); } catch (_) {}
+      layout();
+    }
+
+    tools.addEventListener('click', async (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.hasAttribute('data-collapse') || b.hasAttribute('data-expand')) {
+        collapsed = b.hasAttribute('data-collapse');
+        localStorage.setItem('bubbleToolsCollapsed', collapsed ? '1' : '0');
+        return layout();
+      }
+      const patch = b.dataset.shape ? { 'camera.shape': b.dataset.shape } : { 'camera.mirror': !cam.mirror };
+      try { await lumos.call('settings.set', { patch }); } catch (_) {}
+      applySettings();
+    });
+
+    function setRecording(on) { if (recording !== on) { recording = on; layout(); } }
+    async function refreshRecording() {
+      try { const st = await lumos.call('recording.status'); setRecording(!['idle', 'failed'].includes(st.state)); } catch (_) {}
     }
 
     async function startCamera() {
@@ -44,7 +125,11 @@
 
     // Release the camera while the bubble is hidden so the camera light goes off.
     document.addEventListener('visibilitychange', () => (document.hidden ? stopCamera() : startCamera()));
-    lumos.onEvent((ev) => { if (ev.type === 'settings.changed') applySettings(); });
+    lumos.onEvent((ev) => {
+      if (ev.type === 'settings.changed') applySettings();
+      if (ev.type === 'recorder.stateChanged') setRecording(!['idle', 'failed'].includes(ev.data.state));
+    });
+    refreshRecording();
     applySettings();
     if (!document.hidden) startCamera();
   </script>

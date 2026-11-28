@@ -116,7 +116,11 @@ impl Default for Capture {
 #[serde(rename_all = "camelCase")]
 pub enum CameraShape {
     Circle,
-    RoundedRect,
+    /// Rounded square. Saved by older versions as `roundedRect`.
+    #[serde(alias = "roundedRect")]
+    Squircle,
+    Square,
+    /// 4:3 rectangle.
     Rect,
 }
 
