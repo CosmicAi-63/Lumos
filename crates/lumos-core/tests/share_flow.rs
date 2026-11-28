@@ -30,6 +30,7 @@ struct Fake {
     /// Answer the next Drive metadata call with 401 once (the access token "expired").
     expire_next: bool,
     folders: u32,
+    folder_searches: u32,
     /// Upload session state.
     received: Vec<u8>,
     total: u64,
@@ -184,6 +185,14 @@ fn handle(state: &Mutex<Fake>, req: &Req, session_url: &str) -> (u16, Vec<(&'sta
     }
     match (req.method.as_str(), path.split('?').next().unwrap_or("")) {
         ("GET", "/drive/v3/about") => (200, vec![], json!({ "user": { "emailAddress": "tester@example.com" } }).to_string()),
+        ("GET", "/drive/v3/files") => {
+            // Folder search. With drive.file, Google returns only folders this app created.
+            let q: HashMap<String, String> = url::Url::parse(&format!("http://x{path}")).unwrap().query_pairs().into_owned().collect();
+            assert!(q["q"].contains("name = 'Lumos'") && q["q"].contains("trashed = false"), "{}", q["q"]);
+            f.folder_searches += 1;
+            let files: Vec<Value> = (1..=f.folders).map(|n| json!({ "id": format!("folder-{n}") })).collect();
+            (200, vec![], json!({ "files": files }).to_string())
+        }
         ("POST", "/drive/v3/files") => {
             let meta: Value = serde_json::from_slice(&req.body).unwrap();
             assert_eq!(meta["mimeType"], "application/vnd.google-apps.folder");
@@ -350,4 +359,27 @@ async fn connect_record_and_share_a_link() {
     assert!(!token_file.exists());
     let e = c.call("share.upload", json!({ "id": id, "force": true })).await.unwrap_err();
     assert_eq!(e.code, ErrorCode::AuthRequired);
+
+    // Connecting again (the saved client file is reused) finds the existing "Lumos" folder
+    // instead of making a second one.
+    let socket = paths.socket.clone();
+    let connecting = tokio::spawn(async move {
+        let c = hello(&socket, "cli").await;
+        c.call("share.connect", json!({ "noBrowser": true, "timeoutMs": 30000 })).await
+    });
+    let sign_in = loop {
+        let ev = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.unwrap().unwrap();
+        if ev.kind == "share.signInUrl" {
+            break url::Url::parse(ev.data["url"].as_str().unwrap()).unwrap();
+        }
+    };
+    let q: HashMap<String, String> = sign_in.query_pairs().into_owned().collect();
+    fake.lock().unwrap().challenge = q["code_challenge"].clone();
+    assert_eq!(visit(&format!("{}/?code=good-code&state={}", q["redirect_uri"], q["state"])).await, 200);
+    assert_eq!(connecting.await.unwrap().unwrap()["connected"], true);
+    let up2 = c.call("share.upload", json!({ "id": id, "force": true, "wait": true, "timeoutMs": 60000 })).await.unwrap();
+    assert_eq!(up2["existing"], false);
+    let f = fake.lock().unwrap();
+    assert_eq!(f.folders, 1, "reconnecting must reuse the Lumos folder: {:?}", f.log);
+    assert!(f.folder_searches >= 2);
 }

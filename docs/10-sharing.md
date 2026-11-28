@@ -70,7 +70,7 @@ While the app is in **testing**, Google shows a "Google hasn't verified this app
 - **Sign-in** uses the OAuth loopback flow for desktop apps. The engine listens on `127.0.0.1` on a random port for one redirect and waits up to 5 minutes. A request with the wrong `state` gets a 400 and doesn't end the sign-in. A newer sign-in cancels an older one that is still waiting.
 - **Tokens** live in `<LUMOS_HOME>/google-drive.json`, mode 0600, and the client copy in `google-client.json`. They are never in `settings.json`, which agents can read. Access tokens stay in memory and are refreshed when they expire. A 401 from Drive refreshes once and retries. `invalid_grant` from Google (expired or revoked) deletes the token file and returns `AUTH_REQUIRED`.
 - **Uploads** are resumable. On a network error, a 5xx or a 429, the engine asks the session how much it has (`Content-Range: bytes */N`) and continues from there, retrying up to 6 times with backoff. Progress is reported as `job.progress`.
-- **The folder** is created on first use and again if the user deletes or trashes it.
+- **The folder** is found by name on first use (so reconnecting, or connecting from another Mac, reuses it; `drive.file` only sees folders Lumos made) and created only when none exists, including after the user deletes it.
 - **Errors** worth knowing: Drive full (`storageQuotaExceeded`); a Google Workspace admin who blocks public links (the file is uploaded but stays private, and `data.fileId` names it); a deleted OAuth client (`invalid_client`).
 
 ## Testing
@@ -80,7 +80,7 @@ While the app is in **testing**, Google shows a "Google hasn't verified this app
 - an upload where the server keeps half of the first chunk and then fails with a 503;
 - an access token that expires mid-flow;
 - the link saved in the manifest and reused;
-- disconnect.
+- disconnect, then a reconnect that reuses the same Drive folder.
 
 The endpoints come from environment variables, which also work for manual runs against a local fake:
 

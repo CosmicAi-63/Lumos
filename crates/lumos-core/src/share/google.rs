@@ -478,6 +478,28 @@ impl Drive {
                 return Err(google_err("find the Lumos folder", resp).await);
             }
         }
+        // Reuse a folder made before (after a reconnect or on another Mac). With `drive.file` the
+        // search only sees folders Lumos created.
+        let q = format!("name = '{FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+        let search = Url::parse_with_params(
+            &format!("{}/drive/v3/files", self.ep.api),
+            &[("q", q.as_str()), ("spaces", "drive"), ("fields", "files(id)"), ("orderBy", "createdTime")],
+        )
+        .map_err(|e| ToolError::backend(format!("bad Drive URL: {e}")))?;
+        let resp = self.send(|t| self.http.get(search.clone()).bearer_auth(t)).await?;
+        let found = if resp.status().is_success() {
+            body_json(resp).await["files"][0]["id"].as_str().map(str::to_owned)
+        } else {
+            return Err(google_err("find the Lumos folder", resp).await);
+        };
+        if let Some(id) = found {
+            if let Some(latest) = self.stored() {
+                stored = latest;
+            }
+            stored.folder_id = Some(id.clone());
+            self.save_stored(&stored)?;
+            return Ok(id);
+        }
         let url = format!("{}/drive/v3/files?fields=id", self.ep.api);
         let body = serde_json::to_vec(&json!({ "name": FOLDER_NAME, "mimeType": "application/vnd.google-apps.folder" })).unwrap_or_default();
         let resp = self.send(|t| self.http.post(&url).bearer_auth(t).header(CONTENT_TYPE, "application/json; charset=UTF-8").body(body.clone())).await?;
